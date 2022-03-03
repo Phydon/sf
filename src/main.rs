@@ -33,7 +33,7 @@ fn file_in_dir(dir: &PathBuf, parameters: &Vec<String>) -> bool {
         let path_str = entry.to_str().unwrap();
         if path_str.contains(&parameters[0]) {
             counter += 1;
-            println!("=> [ {:?} ]", path_str);
+            println!("=> {:?}", path_str);
         }
     }
     if counter != 0 {
