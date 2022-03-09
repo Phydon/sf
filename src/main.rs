@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 use std::{env, fs};
 
 fn main() {
@@ -8,7 +8,7 @@ fn main() {
         args.push(arg);
     }
 
-    if args.len() == 0 {
+    if args.is_empty() {
         eprintln!("Usage: sf [ FILENAME ]");
         std::process::exit(1);
     } else if args.len() > 1 {
@@ -17,12 +17,10 @@ fn main() {
     }
 
     let current_path = env::current_dir().unwrap();
-    if !file_in_dir(&current_path, &args) {
-        eprintln!("Your file doesn`t exist in the current directory");
-    }
+    file_in_dir(&current_path, &args);
 }
 
-fn file_in_dir(dir: &PathBuf, parameters: &Vec<String>) -> bool {
+fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
     let mut counter: u32 = 0;
     // list all files in current directory
     for entry in fs::read_dir(&dir).unwrap() {
@@ -37,8 +35,9 @@ fn file_in_dir(dir: &PathBuf, parameters: &Vec<String>) -> bool {
         }
     }
     if counter != 0 {
-        return true;
+        true
     } else {
-        return false;
+        eprintln!("Your file doesn`t exist in the current directory");
+        false
     }
 }
