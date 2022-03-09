@@ -1,3 +1,6 @@
+// TODO check loop -> still panics sometimes
+// TODO add deppsearch
+// TODO add forward search
 use std::path::Path;
 use std::{env, fs};
 
@@ -17,7 +20,19 @@ fn main() {
     }
 
     let current_path = env::current_dir().unwrap();
-    file_in_dir(&current_path, &args);
+    let result = file_in_dir(&current_path, &args);
+    if !result {
+        // TODO still panics sometimes
+        let mut parent = Path::new(&current_path).ancestors();
+        loop {
+            let checker = parent.next();
+            if checker == None { break; }
+
+            let target = file_in_dir(&checker.unwrap(), &args);
+            if target { break; }
+        }
+        println!("File {:?} not found", &args.pop().unwrap());
+    }
 }
 
 fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
@@ -37,7 +52,7 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
     if counter != 0 {
         true
     } else {
-        eprintln!("Your file doesn`t exist in the current directory");
+        // eprintln!("Your file doesn`t exist in the current directory");
         false
     }
 }
