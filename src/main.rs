@@ -1,4 +1,3 @@
-// TODO check loop -> still panics sometimes
 // TODO add deppsearch
 // TODO add forward search
 // TODO sort output alphabetically
@@ -24,7 +23,6 @@ fn main() {
     let current_path = env::current_dir().unwrap();
     let result = file_in_dir(&current_path, &args);
     if !result {
-        // TODO still panics sometimes
         let mut parent = Path::new(&current_path).ancestors();
         loop {
             let checker = parent.next();
@@ -42,19 +40,28 @@ fn main() {
 
 fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
     let mut counter: u32 = 0;
-    // list all files in current directory
+    
+    // list all filepaths in current directory
     for entry in fs::read_dir(&dir).unwrap() {
         let entry = entry.unwrap().path();
         // println!("entry = {}", entry.display());
 
-        // if argument in current directory, print path
-        let path_str = entry.to_str().unwrap();
-        // TODO sort output alphabetically
-        if path_str.contains(&parameters[0]) && !entry.is_dir() {
+        // get file name with extension
+        let file = entry.file_name().unwrap();
+
+        // convert to string
+        let filename = file.to_str().unwrap();
+
+        // if argument in current filename, print file path
+        if filename.contains(&parameters[0]) && !entry.is_dir() {
+            let path_str = entry.to_str().unwrap();
+            // TODO sort output alphabetically
+            // if path_str.contains(&parameters[0]) && !entry.is_dir() {
             counter += 1;
             println!("=> {:?}", path_str);
         }
     }
+
     if counter != 0 {
         true
     } else {
