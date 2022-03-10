@@ -7,8 +7,8 @@
 - if not, it continues searching in the parent folder until it reaches root
 	
 ## Usage
-- ~~sf [ Filename ]~~
-- ~~sf [ search_term ]~~
+> sf [ Filename ]
+> sf [ search_term ]
 
 ## bugs / errors / criticism / advise
 => leann.phydon@gmail.com
