@@ -1,6 +1,8 @@
 // TODO check loop -> still panics sometimes
 // TODO add deppsearch
 // TODO add forward search
+// TODO sort output alphabetically
+
 use std::path::Path;
 use std::{env, fs};
 
@@ -44,7 +46,8 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
 
         // if argument in current directory, print path
         let path_str = entry.to_str().unwrap();
-        if path_str.contains(&parameters[0]) {
+        // TODO sort output alphabetically
+        if path_str.contains(&parameters[0]) && !entry.is_dir() {
             counter += 1;
             println!("=> {:?}", path_str);
         }
@@ -52,7 +55,6 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
     if counter != 0 {
         true
     } else {
-        // eprintln!("Your file doesn`t exist in the current directory");
         false
     }
 }
