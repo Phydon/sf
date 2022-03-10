@@ -28,12 +28,15 @@ fn main() {
         let mut parent = Path::new(&current_path).ancestors();
         loop {
             let checker = parent.next();
-            if checker == None { break; }
+
+            if checker == None { 
+                println!("File {:?} not found", &args.pop().unwrap());
+                break;
+            }
 
             let target = file_in_dir(&checker.unwrap(), &args);
             if target { break; }
         }
-        println!("File {:?} not found", &args.pop().unwrap());
     }
 }
 
