@@ -42,6 +42,19 @@ below are some easy ways to get it running (probably not the most efficient way 
 
 > sf [ search_term ]
 
+Example:
+
+Let`s say you quickly want to find the file testfile.txt. 
+
+Enter:
+	- 'sf testfile.txt'
+
+or simpler but not as precise:
+	- 'sf test'
+
+or even less precise:
+	- 'sf .txt'
+
 ## Bugs / Errors / Criticism / Advise
 => leann.phydon@gmail.com
 
