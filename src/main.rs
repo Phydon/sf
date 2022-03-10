@@ -52,13 +52,12 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
         // convert to string
         let filename = file.to_str().unwrap();
 
+        // TODO sort output alphabetically
         // if argument in current filename, print file path
         if filename.contains(&parameters[0]) && !entry.is_dir() {
             let path_str = entry.to_str().unwrap();
-            // TODO sort output alphabetically
-            // if path_str.contains(&parameters[0]) && !entry.is_dir() {
             counter += 1;
-            println!("=> {:?}", path_str);
+            println!("=> {:}", path_str);
         }
     }
 
