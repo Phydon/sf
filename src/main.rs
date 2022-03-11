@@ -1,6 +1,6 @@
 // TODO add deppsearch
 // TODO add forward search
-// TODO sort output alphabetically
+// TODO remove case sensitivity
 
 use std::path::Path;
 use std::{env, fs};
@@ -39,7 +39,7 @@ fn main() {
 }
 
 fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
-    let mut counter: u32 = 0;
+    let mut file_container: Vec<String> = Vec::new();
     
     // list all filepaths in current directory
     for entry in fs::read_dir(&dir).unwrap() {
@@ -52,18 +52,20 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
         // convert to string
         let filename = file.to_str().unwrap();
 
-        // TODO sort output alphabetically
         // if argument in current filename, print file path
         if filename.contains(&parameters[0]) && !entry.is_dir() {
             let path_str = entry.to_str().unwrap();
-            counter += 1;
-            println!("=> {:}", path_str);
+            file_container.push(path_str.to_string());
         }
     }
 
-    if counter != 0 {
-        true
-    } else {
+    if file_container.is_empty() {
         false
+    } else {
+        file_container.sort();
+        for f in file_container {
+            println!("=> {:}", f);
+        }
+        true
     }
 }

@@ -60,5 +60,6 @@ or even less precise:
 
 ### Work In Progress
 - [ ] TODO: search forwards
-- [ ] TODO: sort output alphabetically
+- [ ] TODO: add deppsearch
+- [ ] TODO: remove case sensitivity
 
