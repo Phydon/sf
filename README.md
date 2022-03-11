@@ -17,7 +17,7 @@ below are some easy ways to get it running (probably not the most efficient way 
 	- for example with fish terminal:
 		- find or create '~/.config/fish/config.fish'
 		- add:	
-			> 'alias sf="~/Aliases/sf"'
+			> alias sf="~/Aliases/sf"
 - restart terminal
 
 **Windows Cmd**
@@ -25,9 +25,11 @@ below are some easy ways to get it running (probably not the most efficient way 
 - download the file 'target/release/sf.exe' and put it in this folder
 - create a file 'sf.bat'
 	- add:	
-		> '@echo off'
-		> 'echo.'
-		> 'C:/Aliases/sf.exe %*'
+		> @echo off
+	
+		> echo.
+	
+		> C:/Aliases/sf.exe %*
 - add the folder to your systems PATH variable
 - restart cmd
  
@@ -36,13 +38,13 @@ below are some easy ways to get it running (probably not the most efficient way 
 - download the file 'target/release/sf.exe' and put it in this folder
 - find or create a file 'profile.ps1'
 	- add:	
-		> 'New-Alias sf C:/Aliases/sf.exe'
+		> New-Alias sf C:/Aliases/sf.exe
 - restart powershell
 	
 ## Usage
-> sf [ Filename ]
+	> sf [ Filename ]
 
-> sf [ search_pattern]
+	> sf [ search_pattern]
 
 Example:
 
