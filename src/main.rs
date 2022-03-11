@@ -64,7 +64,7 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
     } else {
         file_container.sort();
         for f in file_container {
-            println!("=> {:}", f);
+            println!("{:}", f);
         }
         true
     }
