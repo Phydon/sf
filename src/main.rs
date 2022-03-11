@@ -1,6 +1,5 @@
 // TODO add deppsearch
 // TODO add forward search
-// TODO remove case sensitivity
 
 use std::path::Path;
 use std::{env, fs};
@@ -49,11 +48,12 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
         // get file name with extension
         let file = entry.file_name().unwrap();
 
-        // convert to string
+        // convert to string and lowercase
         let filename = file.to_str().unwrap();
+        let filename_lowercase = filename.to_lowercase();
 
         // if argument in current filename, print file path
-        if filename.contains(&parameters[0]) && !entry.is_dir() {
+        if filename.contains(&parameters[0]) || filename_lowercase.contains(&parameters[0]) && !entry.is_dir() {
             let path_str = entry.to_str().unwrap();
             file_container.push(path_str.to_string());
         }
@@ -63,7 +63,7 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
         false
     } else {
         file_container.sort();
-        for f in file_container {
+        for f in &file_container {
             println!("{:}", f);
         }
         true
