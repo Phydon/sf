@@ -2,10 +2,11 @@
 ### command line tool
 **simple and fast recursive file search**
 - starting from your current path / folder
-- if file with given pattern (parameter) exists, it outputs the complete path
+- if files with given pattern (parameter) exist, it outputs the complete path of all files
 - if not, it continues searching in the parent folder until it reaches root
-- if lowercase pattern is given, it searches case insensitive by default and outputs uppercase and lowercase
+- if lowercase pattern is given, it searches case insensitive by default and outputs uppercase and lowercase results
 - if uppercase character in pattern, it only searches for the exact pattern
+- output in alphabetical order, uppercase first, then lowercase
 	
 ## Installation
 below are some easy ways to get it running (probably not the most efficient way but it should work):
