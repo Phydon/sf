@@ -62,6 +62,15 @@ or simpler but not as precise:
 or even less precise:
 	
 	> sf .txt
+	
+Additional arguments:
+
+- get help:
+	> sf --help
+	
+- search for "test" in all directories and print out all files with the pattern:
+
+	> sf test -a
 
 ## Bugs / Errors / Criticism / Advise
 => leann.phydon@gmail.com
