@@ -53,7 +53,7 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
         let filename_lowercase = filename.to_lowercase();
 
         // if argument in current filename, print file path
-        if filename.contains(&parameters[0]) || filename_lowercase.contains(&parameters[0]) && !entry.is_dir() {
+        if filename.contains(&parameters[0]) && !entry.is_dir() || filename_lowercase.contains(&parameters[0]) && !entry.is_dir() {
             let path_str = entry.to_str().unwrap();
             file_container.push(path_str.to_string());
         }
