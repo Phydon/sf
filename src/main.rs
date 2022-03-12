@@ -31,7 +31,7 @@ fn main() {
             loop {
                 let parent = parent_iterator.next();
                 if parent == None {
-                    println!("File {:?} not found", &args.get(0).unwrap());
+                    eprintln!("File {:?} not found", &args.get(0).unwrap());
                     break;
                 }
 
@@ -55,14 +55,14 @@ fn main() {
             }
 
             if parent == None && no_file {
-                println!("File {:?} not found", &args.get(0).unwrap());
+                eprintln!("File {:?} not found", &args.get(0).unwrap());
                 break;
             } else if parent == None {
                 break;
             }
         }
     } else {
-        println!("Invalid argument given");
+        eprintln!("Invalid argument given");
     }
 }
 
