@@ -43,10 +43,11 @@ below are some easy ways to get it running (probably not the most efficient way 
 - restart powershell
 	
 ## Usage
-	```
-	sf [ Filename ]
-	sf [ search_pattern]
-	```
+
+```
+sf [ Filename ]
+sf [ search_pattern]
+```
 
 Example:
 
@@ -54,19 +55,20 @@ Let`s say you quickly want to find the file "testfile.txt".
 
 Enter:
 	
-	`sf testfile.txt`
+`sf testfile.txt`
 
 or simpler but not as precise:
 	
-	`sf test`
+`sf test`
 
 or even less precise:
 	
-	`sf .txt`
+`sf .txt`
 	
 Additional arguments:
 
 - get help:
+	
 	`sf --help`
 	
 - search for "test" in all directories and print out all files with the pattern:
@@ -75,6 +77,7 @@ Additional arguments:
 
 ## Bugs / Errors / Criticism / Advise
 => leann.phydon@gmail.com
+
 seriously, let me know
 
 ### Work In Progress
