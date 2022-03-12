@@ -43,21 +43,19 @@ fn main() {
         }
     } else if args.len() > 1 && args.contains(&String::from("-a")) {
         let mut parent_iterator = Path::new(&current_path).ancestors();
+        let mut no_file: Vec<u8> = Vec::new();
         loop {
-            let mut no_file: bool = false;
             let parent = parent_iterator.next();
-            
             if parent != None {
                 let target = file_in_dir(&parent.unwrap(), &args);
-                if !target {
-                    no_file = true;
+                if target {
+                    no_file.push(1);
                 }
-            }
+            } else {
+                if no_file.is_empty() {
+                    eprintln!("File {:?} not found", &args.get(0).unwrap());
+                }
 
-            if parent == None && no_file {
-                eprintln!("File {:?} not found", &args.get(0).unwrap());
-                break;
-            } else if parent == None {
                 break;
             }
         }
