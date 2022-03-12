@@ -1,6 +1,3 @@
-// TODO add deppsearch
-// TODO add forward search
-
 use std::path::Path;
 use std::{env, fs};
 
@@ -79,11 +76,9 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
         let filename_lowercase = filename.to_lowercase();
 
         // if pattern in current filename, print file path
-        if entry.is_file() {
-            if filename.contains(&parameters[0]) || filename_lowercase.contains(&parameters[0]) {
-                let path_str = entry.to_str().unwrap();
-                file_container.push(path_str.to_string());
-            }
+        if entry.is_file() && filename.contains(&parameters[0]) || entry.is_file() && filename_lowercase.contains(&parameters[0]) {
+            let path_str = entry.to_str().unwrap();
+            file_container.push(path_str.to_string());
         }
     }
 

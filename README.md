@@ -83,3 +83,4 @@ seriously, let me know
 ### Work In Progress
 - [ ] TODO: search forwards
 - [ ] TODO: add deppsearch
+- [ ] TODO: optimize performance
