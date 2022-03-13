@@ -9,7 +9,7 @@ fn main() {
     }
 
     if args.is_empty() {
-        eprintln!("Usage: sf [ FILENAME ]");
+        eprintln!("Usage: sf [FILENAME] <FLAGS>");
         std::process::exit(1);
     } else if args.len() > 2 {
         eprintln!("Too many arguments");
@@ -20,7 +20,7 @@ fn main() {
 
     if args.len() == 1 && args.contains(&String::from("--help")) {
         // TODO add helpful information
-        println!("Usage: sf [ FILENAME ]");
+        help_flag();
     } else if args.len() == 1 {
         let result = file_in_dir(&current_path, &args);
         if !result {
@@ -91,4 +91,17 @@ fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
         }
         true
     }
+}
+
+fn help_flag() {
+    println!("\nSimpleFind => fast and simple recursive file search");
+    println!("---------------------------------------------------\n");
+    println!("      USAGE:      sf [PATTERN] <FLAGS>\n");
+    println!("DESCRIPTION\n");
+    println!("Searches for the given PATTERN in filenames. If there`s a match, it stops and returns all files with the PATTERN from that directory. If there is no match, it searches in the parent directory and so on until it reaches root.");
+    println!("You can change this behavior with FLAGS.\n");
+    println!("PATTERN:      the filename (or parts of it) you want to search for\n");
+    println!("FLAGS: ");
+    println!("              -a          =>  recursive search in all directories till root");
+    println!("              --help      =>  get help");
 }

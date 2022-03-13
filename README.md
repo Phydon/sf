@@ -45,8 +45,7 @@ below are some easy ways to get it running (probably not the most efficient way 
 ## Usage
 
 ```
-sf [ Filename ]
-sf [ search_pattern]
+sf [PATTERN] <FLAGS>
 ```
 
 Example:
