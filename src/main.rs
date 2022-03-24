@@ -19,7 +19,6 @@ fn main() {
     let current_path = env::current_dir().unwrap();
 
     if args.len() == 1 && args.contains(&String::from("--help")) {
-        // TODO add helpful information
         help_flag();
     } else if args.len() == 1 {
         let result = file_in_dir(&current_path, &args);
