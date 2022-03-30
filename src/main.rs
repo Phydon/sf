@@ -1,6 +1,8 @@
 use std::path::Path;
 use std::{env, fs};
 
+const VERSION: &str = "1.0.0";
+
 fn main() {
     let mut args = Vec::new();
 
@@ -9,7 +11,8 @@ fn main() {
     }
 
     if args.is_empty() {
-        eprintln!("Usage: sf [FILENAME] <FLAGS>");
+        eprintln!("Usage: sf [PATTERN] <FLAGS>");
+        eprintln!("type \"sf -h\" or \"sf --help\" to show the help menu");
         std::process::exit(1);
     } else if args.len() > 2 {
         eprintln!("Too many arguments");
@@ -18,8 +21,10 @@ fn main() {
 
     let current_path = env::current_dir().unwrap();
 
-    if args.len() == 1 && args.contains(&String::from("--help")) {
+    if args.len() == 1 && args.contains(&String::from("--help")) || args.contains(&String::from("-h")) {
         help_flag();
+    } else if args.len() == 1 && args.contains(&String::from("--version")) || args.contains(&String::from("-V")) {
+        println!("{}", VERSION);
     } else if args.len() == 1 {
         let result = file_in_dir(&current_path, &args);
         if !result {
@@ -97,10 +102,11 @@ fn help_flag() {
     println!("---------------------------------------------------\n");
     println!("      USAGE:      sf [PATTERN] <FLAGS>\n");
     println!("DESCRIPTION\n");
-    println!("Searches for the given PATTERN in filenames. If there`s a match, it stops and returns all files with the PATTERN from that directory. If there is no match, it searches in the parent directory and so on until it reaches root.");
+    println!("Searches for the given PATTERN in filenames. If there`s a match, it stops and returns all files with the PATTERN from that directory. If there is no match, it searches in the parent directory and so on until it reaches the root directory.");
     println!("You can change this behavior with FLAGS.\n");
     println!("PATTERN:      the filename (or parts of it) you want to search for\n");
     println!("FLAGS: ");
-    println!("              -a          =>  recursive search in all directories till root");
-    println!("              --help      =>  get help");
+    println!("              -a              =>  recursive search in all directories till root directory");
+    println!("              -h, --help      =>  get help");
+    println!("              -V, --version   =>  print out the current version of SimpleFind");
 }
