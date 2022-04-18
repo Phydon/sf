@@ -1,7 +1,9 @@
 # SimpleFind
 ### command line tool
 **simple and fast recursive file search**
+
 no extern dependencies
+
 - starting from your current path / folder
 - if files with given pattern (parameter) exist, it outputs the complete path of all files
 - if not, it continues searching in the parent folder until it reaches root
