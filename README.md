@@ -1,6 +1,7 @@
 # SimpleFind
 ### command line tool
 **simple and fast recursive file search**
+no extern dependencies
 - starting from your current path / folder
 - if files with given pattern (parameter) exist, it outputs the complete path of all files
 - if not, it continues searching in the parent folder until it reaches root
@@ -8,6 +9,38 @@
 - if uppercase character in pattern, it only searches for the exact pattern
 - output in alphabetical order, uppercase first, then lowercase
 	
+## Usage
+
+```
+sf [PATTERN] <FLAGS>
+```
+
+Example:
+
+Let`s say you quickly want to find the file "testfile.txt". 
+
+Enter:
+	
+`sf testfile.txt`
+
+or simpler but not as precise:
+	
+`sf test`
+
+or even less precise:
+	
+`sf .txt`
+	
+Additional arguments:
+
+- get help:
+	
+	`sf --help`
+	
+- search for "test" in all directories and print out all files with the pattern:
+
+	`sf test -a`
+
 ## Installation
 below are some easy ways to get it running (probably not the most efficient way but it should work):
 
@@ -42,42 +75,8 @@ below are some easy ways to get it running (probably not the most efficient way 
 		`New-Alias sf C:/Aliases/sf.exe`
 - restart powershell
 	
-## Usage
-
-```
-sf [PATTERN] <FLAGS>
-```
-
-Example:
-
-Let`s say you quickly want to find the file "testfile.txt". 
-
-Enter:
-	
-`sf testfile.txt`
-
-or simpler but not as precise:
-	
-`sf test`
-
-or even less precise:
-	
-`sf .txt`
-	
-Additional arguments:
-
-- get help:
-	
-	`sf --help`
-	
-- search for "test" in all directories and print out all files with the pattern:
-
-	`sf test -a`
-
 ## Bugs / Errors / Criticism / Advise
 => leann.phydon@gmail.com
-
-seriously, let me know
 
 ### Work In Progress
 - [ ] TODO: search forwards
