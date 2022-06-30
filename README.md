@@ -17,7 +17,7 @@
 sf [PATTERN] <FLAGS>
 ```
 
-####Example:
+#### Example:
 
 Let`s say you quickly want to find the file "testfile.txt". 
 
