@@ -1,11 +1,11 @@
 # SimpleFind
 ### command line tool
-**simple and fast recursive file search**
+**simple and fast backwards file search**
 
-no extern dependencies
+*no extern dependencies*
 
 - starting from your current path / folder
-- if files with given pattern (parameter) exist, it outputs the complete path of all files
+- if files with given pattern (parameter) exist, it outputs the complete path of all found files 
 - if not, it continues searching in the parent folder until it reaches root
 - if lowercase pattern is given, it searches case insensitive by default and outputs uppercase and lowercase results
 - if uppercase character in pattern, it only searches for the exact pattern
@@ -17,7 +17,7 @@ no extern dependencies
 sf [PATTERN] <FLAGS>
 ```
 
-Example:
+####Example:
 
 Let`s say you quickly want to find the file "testfile.txt". 
 
@@ -38,10 +38,20 @@ Additional arguments:
 - get help:
 	
 	`sf --help`
-	
-- search for "test" in all directories and print out all files with the pattern:
+	or
+	`sf -h`
 
-	`sf test -a`
+- get version
+	
+	`sf --version`
+	or
+	`sf -V`
+	
+- search backwards in your current path for "test" in directories and print out all files with the pattern:
+
+	`sf [PATTERN] --all`
+	or
+	`sf [PATTERN] -a`
 
 ## Installation
 below are some easy ways to get it running (probably not the most efficient way but it should work):
@@ -83,4 +93,3 @@ below are some easy ways to get it running (probably not the most efficient way 
 ### Work In Progress
 - [ ] TODO: search forwards
 - [ ] TODO: add deppsearch
-- [ ] TODO: optimize performance

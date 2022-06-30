@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::{env, fs};
 
-const VERSION: &str = "1.0.0";
+const VERSION: &str = "1.0.1";
 
 fn main() {
     let mut args = Vec::new();
@@ -42,7 +42,7 @@ fn main() {
                 }
             }
         }
-    } else if args.len() > 1 && args.contains(&String::from("-a")) {
+    } else if args.len() > 1 && args.contains(&String::from("-a")) || args.contains(&String::from("--all")) {
         let mut parent_iterator = Path::new(&current_path).ancestors();
         let mut file_storage: Vec<u8> = Vec::new();
         loop {
