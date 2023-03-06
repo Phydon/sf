@@ -44,8 +44,8 @@ fn main() {
 
     // handle arguments
     let matches = sf().get_matches();
-    // let hidden_flag = matches.get_flag("hidden");
-    // let colour_flag = matches.get_flag("colour");
+    let file_flag = matches.get_flag("file");
+    let dir_flag = matches.get_flag("dir");
     if let Some(args) = matches
         .get_many::<String>("args")
         .map(|a| a.collect::<Vec<_>>())
@@ -53,7 +53,7 @@ fn main() {
         let pattern = args[0];
         let path = Path::new(&args[1]).to_path_buf();
 
-        if let Err(err) = search(pattern, &path) {
+        if let Err(err) = search(pattern, &path, file_flag, dir_flag) {
             error!(
                 "Unable to find anything with {} in {}: {}",
                 pattern,
@@ -105,22 +105,20 @@ fn sf() -> Command {
                 .num_args(2)
                 .value_names(["PATTERN", "PATH"]),
         )
-        // .arg(
-        //     Arg::new("colour")
-        //         .short('c')
-        //         .long("colour")
-        //         .visible_alias("color")
-        //         .help("Show coloured output")
-        //         .action(ArgAction::SetTrue),
-        // )
-        // .arg(
-        //     Arg::new("hidden")
-        //         .short('H')
-        //         .long("hidden")
-        //         .visible_alias("all")
-        //         .help("Show hidden files")
-        //         .action(ArgAction::SetTrue),
-        // )
+        .arg(
+            Arg::new("file")
+                .short('f')
+                .long("file")
+                .help("Search only in file names for the pattern")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("dir")
+                .short('d')
+                .long("dir")
+                .help("Search only in directory names for the pattern")
+                .action(ArgAction::SetTrue),
+        )
         .subcommand(
             Command::new("log")
                 .short_flag('L')
@@ -128,14 +126,19 @@ fn sf() -> Command {
         )
 }
 
-fn search(pattern: &str, path: &PathBuf) -> io::Result<()> {
-    let search_hits = forwards_search(pattern, path)?;
+fn search(pattern: &str, path: &PathBuf, file_flag: bool, dir_flag: bool) -> io::Result<()> {
+    let search_hits = forwards_search(pattern, path, file_flag, dir_flag)?;
     get_search_hits(search_hits);
 
     Ok(())
 }
 
-fn forwards_search(pattern: &str, path: &PathBuf) -> io::Result<Vec<PathBuf>> {
+fn forwards_search(
+    pattern: &str,
+    path: &PathBuf,
+    file_flag: bool,
+    dir_flag: bool,
+) -> io::Result<Vec<PathBuf>> {
     let mut search_hits = Vec::new();
     let mut search_path = Path::new(&path).to_path_buf();
 
@@ -149,6 +152,14 @@ fn forwards_search(pattern: &str, path: &PathBuf) -> io::Result<Vec<PathBuf>> {
 
     for entry in fs::read_dir(search_path)? {
         let entry = entry?;
+
+        if file_flag && !entry.path().is_file() {
+            continue;
+        }
+
+        if dir_flag && !entry.path().is_dir() {
+            continue;
+        }
 
         let mut name = String::new();
         if let Some(filename) = entry.path().file_name() {
