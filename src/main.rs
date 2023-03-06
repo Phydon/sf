@@ -127,7 +127,8 @@ fn sf() -> Command {
 }
 
 fn search(pattern: &str, path: &PathBuf, file_flag: bool, dir_flag: bool) -> io::Result<()> {
-    let search_hits = forwards_search(pattern, path, file_flag, dir_flag)?;
+    let mut search_hits = Vec::new();
+    forwards_search(pattern, path, file_flag, dir_flag, &mut search_hits)?;
     get_search_hits(search_hits);
 
     Ok(())
@@ -138,8 +139,8 @@ fn forwards_search(
     path: &PathBuf,
     file_flag: bool,
     dir_flag: bool,
-) -> io::Result<Vec<PathBuf>> {
-    let mut search_hits = Vec::new();
+    search_hits: &mut Vec<PathBuf>,
+) -> io::Result<()> {
     let mut search_path = Path::new(&path).to_path_buf();
 
     if path.as_path().to_string_lossy().to_string() == "." {
@@ -171,9 +172,22 @@ fn forwards_search(
         if name.contains(pattern) {
             search_hits.push(entry.path());
         }
+
+        if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
+            let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
+            entry_path.push_str("\\");
+            let path = Path::new(&entry_path);
+            forwards_search(
+                pattern,
+                &path.to_path_buf(),
+                file_flag,
+                dir_flag,
+                search_hits,
+            )?;
+        }
     }
 
-    Ok(search_hits)
+    Ok(())
 }
 
 fn get_search_hits(search_hits: Vec<PathBuf>) {
@@ -199,6 +213,11 @@ fn get_search_hits(search_hits: Vec<PathBuf>) {
         println!(
             "found {} matches",
             search_hits.len().to_string().red().bold()
+        );
+    } else if search_hits.len() == 1 {
+        println!(
+            "\nfound {} match",
+            search_hits.len().to_string().bright_green().bold()
         );
     } else {
         println!(
