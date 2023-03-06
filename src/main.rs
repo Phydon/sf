@@ -1,3 +1,6 @@
+// TODO limit recursion???
+#![recursion_limit = "250"]
+
 use clap::{Arg, ArgAction, Command};
 use colored::*;
 use flexi_logger::{detailed_format, Duplicate, FileSpec, Logger};
