@@ -51,18 +51,15 @@ fn main() {
         .map(|a| a.collect::<Vec<_>>())
     {
         let pattern = args[0];
-        let mut path = Path::new(&args[1]).to_path_buf();
+        let path = Path::new(&args[1]).to_path_buf();
 
-        if args[1].is_empty() {
-            let current_dir = env::current_dir().unwrap_or_else(|err| {
-                error!("Unable to get current directory: {err}");
-                process::exit(1);
-            });
-            path.push(current_dir);
-        }
-
-        if let Err(err) = forwards_search(pattern, &path) {
-            error!("Unable to get the entries of the directory: {}", err);
+        if let Err(err) = search(pattern, &path) {
+            error!(
+                "Unable to find anything with {} in {}: {}",
+                pattern,
+                path.display(),
+                err
+            );
             process::exit(1);
         }
     } else {
@@ -124,15 +121,6 @@ fn sf() -> Command {
         //         .help("Show hidden files")
         //         .action(ArgAction::SetTrue),
         // )
-        // .arg(
-        //     Arg::new("path")
-        //         .short('p')
-        //         .long("path")
-        //         .help("Add a path to a directory")
-        //         .action(ArgAction::Set)
-        //         .num_args(1)
-        //         .value_name("PATH"),
-        // )
         .subcommand(
             Command::new("log")
                 .short_flag('L')
@@ -140,11 +128,73 @@ fn sf() -> Command {
         )
 }
 
-fn forwards_search(pattern: &str, path: &PathBuf) -> io::Result<()> {
-    println!("pattern: {}", pattern);
-    println!("path: {}", path.display());
+fn search(pattern: &str, path: &PathBuf) -> io::Result<()> {
+    let search_hits = forwards_search(pattern, path)?;
+    get_search_hits(search_hits);
 
     Ok(())
+}
+
+fn forwards_search(pattern: &str, path: &PathBuf) -> io::Result<Vec<PathBuf>> {
+    let mut search_hits = Vec::new();
+    let mut search_path = Path::new(&path).to_path_buf();
+
+    if path.as_path().to_string_lossy().to_string() == "." {
+        let current_dir = env::current_dir().unwrap_or_else(|err| {
+            error!("Unable to get current directory: {err}");
+            process::exit(1);
+        });
+        search_path.push(current_dir);
+    }
+
+    for entry in fs::read_dir(search_path)? {
+        let entry = entry?;
+
+        let mut name = String::new();
+        if let Some(filename) = entry.path().file_name() {
+            name.push_str(&filename.to_string_lossy().to_string());
+        } else {
+            error!("Unable to get the filename of {}", entry.path().display());
+        }
+
+        if name.contains(pattern) {
+            search_hits.push(entry.path());
+        }
+    }
+
+    Ok(search_hits)
+}
+
+fn get_search_hits(search_hits: Vec<PathBuf>) {
+    for hit in &search_hits {
+        let parent = hit
+            .parent()
+            .unwrap_or_else(|| Path::new(""))
+            .to_string_lossy()
+            .to_string();
+
+        let mut name = String::new();
+        if let Some(filename) = hit.file_name() {
+            name.push_str(&filename.to_string_lossy().to_string());
+            println!("{}\\{}", parent, name.bright_green());
+        } else {
+            // TODO remove? how to handle this error?
+            // error!("Unable to get the filename of {}", hit.display());
+            println!("{}", hit.display());
+        }
+    }
+
+    if search_hits.len() == 0 {
+        println!(
+            "found {} matches",
+            search_hits.len().to_string().red().bold()
+        );
+    } else {
+        println!(
+            "\nfound {} matches",
+            search_hits.len().to_string().bright_green().bold()
+        );
+    }
 }
 
 fn check_create_config_dir() -> io::Result<PathBuf> {
@@ -186,104 +236,104 @@ fn show_log_file(config_dir: &PathBuf) -> io::Result<String> {
     }
 }
 
-fn backwards_search() {
-    let mut args = Vec::new();
+// fn backwards_search() {
+//     let mut args = Vec::new();
 
-    for arg in env::args().skip(1) {
-        args.push(arg);
-    }
+//     for arg in env::args().skip(1) {
+//         args.push(arg);
+//     }
 
-    if args.is_empty() {
-        eprintln!("Usage: sf [PATTERN] <FLAGS>");
-        eprintln!("type \"sf -h\" or \"sf --help\" to show the help menu");
-        std::process::exit(1);
-    } else if args.len() > 2 {
-        eprintln!("Too many arguments");
-        std::process::exit(1);
-    }
+//     if args.is_empty() {
+//         eprintln!("Usage: sf [PATTERN] <FLAGS>");
+//         eprintln!("type \"sf -h\" or \"sf --help\" to show the help menu");
+//         std::process::exit(1);
+//     } else if args.len() > 2 {
+//         eprintln!("Too many arguments");
+//         std::process::exit(1);
+//     }
 
-    let current_path = env::current_dir().unwrap();
+//     let current_path = env::current_dir().unwrap();
 
-    if args.len() == 1 && args.contains(&String::from("--help"))
-        || args.contains(&String::from("-h"))
-    {
-        todo!();
-    } else if args.len() == 1 && args.contains(&String::from("--version"))
-        || args.contains(&String::from("-V"))
-    {
-        todo!();
-    } else if args.len() == 1 {
-        let result = file_in_dir(&current_path, &args);
-        if !result {
-            let mut parent_iterator = Path::new(&current_path).ancestors();
-            loop {
-                let parent = parent_iterator.next();
-                if parent == None {
-                    eprintln!("File {:?} not found", &args.get(0).unwrap());
-                    break;
-                }
+//     if args.len() == 1 && args.contains(&String::from("--help"))
+//         || args.contains(&String::from("-h"))
+//     {
+//         todo!();
+//     } else if args.len() == 1 && args.contains(&String::from("--version"))
+//         || args.contains(&String::from("-V"))
+//     {
+//         todo!();
+//     } else if args.len() == 1 {
+//         let result = file_in_dir(&current_path, &args);
+//         if !result {
+//             let mut parent_iterator = Path::new(&current_path).ancestors();
+//             loop {
+//                 let parent = parent_iterator.next();
+//                 if parent == None {
+//                     eprintln!("File {:?} not found", &args.get(0).unwrap());
+//                     break;
+//                 }
 
-                let target = file_in_dir(&parent.unwrap(), &args);
-                if target {
-                    break;
-                }
-            }
-        }
-    } else if args.len() > 1 && args.contains(&String::from("-a"))
-        || args.contains(&String::from("--all"))
-    {
-        let mut parent_iterator = Path::new(&current_path).ancestors();
-        let mut file_storage: Vec<u8> = Vec::new();
-        loop {
-            let parent = parent_iterator.next();
-            if parent != None {
-                let target = file_in_dir(&parent.unwrap(), &args);
-                if target {
-                    file_storage.push(1);
-                }
-            } else {
-                if file_storage.is_empty() {
-                    eprintln!("File {:?} not found", &args.get(0).unwrap());
-                }
-                break;
-            }
-        }
-    } else {
-        eprintln!("Invalid argument given");
-    }
-}
+//                 let target = file_in_dir(&parent.unwrap(), &args);
+//                 if target {
+//                     break;
+//                 }
+//             }
+//         }
+//     } else if args.len() > 1 && args.contains(&String::from("-a"))
+//         || args.contains(&String::from("--all"))
+//     {
+//         let mut parent_iterator = Path::new(&current_path).ancestors();
+//         let mut file_storage: Vec<u8> = Vec::new();
+//         loop {
+//             let parent = parent_iterator.next();
+//             if parent != None {
+//                 let target = file_in_dir(&parent.unwrap(), &args);
+//                 if target {
+//                     file_storage.push(1);
+//                 }
+//             } else {
+//                 if file_storage.is_empty() {
+//                     eprintln!("File {:?} not found", &args.get(0).unwrap());
+//                 }
+//                 break;
+//             }
+//         }
+//     } else {
+//         eprintln!("Invalid argument given");
+//     }
+// }
 
-fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
-    let mut file_container: Vec<String> = Vec::new();
+// fn file_in_dir(dir: &Path, parameters: &[String]) -> bool {
+//     let mut file_container: Vec<String> = Vec::new();
 
-    // list all filepaths in current directory
-    for entry in fs::read_dir(&dir).unwrap() {
-        let entry = entry.unwrap().path();
-        // println!("entry = {}", entry.display());
+//     // list all filepaths in current directory
+//     for entry in fs::read_dir(&dir).unwrap() {
+//         let entry = entry.unwrap().path();
+//         // println!("entry = {}", entry.display());
 
-        // get file name with extension
-        let file = entry.file_name().unwrap();
+//         // get file name with extension
+//         let file = entry.file_name().unwrap();
 
-        // convert to string and lowercase
-        let filename = file.to_str().unwrap();
-        let filename_lowercase = filename.to_lowercase();
+//         // convert to string and lowercase
+//         let filename = file.to_str().unwrap();
+//         let filename_lowercase = filename.to_lowercase();
 
-        // if pattern in current filename, print file path
-        if entry.is_file() && filename.contains(&parameters[0])
-            || entry.is_file() && filename_lowercase.contains(&parameters[0])
-        {
-            let path_str = entry.to_str().unwrap();
-            file_container.push(path_str.to_string());
-        }
-    }
+//         // if pattern in current filename, print file path
+//         if entry.is_file() && filename.contains(&parameters[0])
+//             || entry.is_file() && filename_lowercase.contains(&parameters[0])
+//         {
+//             let path_str = entry.to_str().unwrap();
+//             file_container.push(path_str.to_string());
+//         }
+//     }
 
-    if file_container.is_empty() {
-        false
-    } else {
-        file_container.sort();
-        for f in &file_container {
-            println!("{:}", f);
-        }
-        true
-    }
-}
+//     if file_container.is_empty() {
+//         false
+//     } else {
+//         file_container.sort();
+//         for f in &file_container {
+//             println!("{:}", f);
+//         }
+//         true
+//     }
+// }
