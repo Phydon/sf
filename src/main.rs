@@ -218,10 +218,14 @@ fn forwards_search(
     for entry in fs::read_dir(search_path)? {
         let entry = entry?;
 
+        // FIXME no recursion possible
+        // make sure to keep searching in directories
         if file_flag && !entry.path().is_file() {
             continue;
         }
 
+        // FIXME no recursion possible
+        // make sure to keep searching in directories
         if dir_flag && !entry.path().is_dir() {
             continue;
         }
@@ -272,7 +276,7 @@ fn get_search_hits(search_hits: Vec<PathBuf>) {
         let mut name = String::new();
         if let Some(filename) = hit.file_name() {
             name.push_str(&filename.to_string_lossy().to_string());
-            println!("{}\\{}", parent, name.bright_green());
+            println!("{}\\{}", parent, name.truecolor(59, 179, 140));
         } else {
             // TODO remove? how to handle this error?
             // error!("Unable to get the filename of {}", hit.display());
@@ -283,17 +287,17 @@ fn get_search_hits(search_hits: Vec<PathBuf>) {
     if search_hits.len() == 0 {
         println!(
             "found {} matches",
-            search_hits.len().to_string().red().bold()
+            search_hits.len().to_string().truecolor(250, 0, 104).bold()
         );
     } else if search_hits.len() == 1 {
         println!(
             "\nfound {} match",
-            search_hits.len().to_string().bright_green().bold()
+            search_hits.len().to_string().truecolor(59, 179, 140).bold()
         );
     } else {
         println!(
             "\nfound {} matches",
-            search_hits.len().to_string().bright_green().bold()
+            search_hits.len().to_string().truecolor(59, 179, 140).bold()
         );
     }
 }
@@ -330,7 +334,10 @@ fn show_log_file(config_dir: &PathBuf) -> io::Result<String> {
         false => {
             return Ok(format!(
                 "{} {}",
-                "No log file found:".red().bold().to_string(),
+                "No log file found:"
+                    .truecolor(250, 0, 104)
+                    .bold()
+                    .to_string(),
                 log_path.display()
             ))
         }
