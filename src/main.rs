@@ -151,7 +151,7 @@ fn sf() -> Command {
         )
         .subcommand(
             Command::new("exclude")
-                .short_flag('e')
+                .short_flag('E')
                 .long_flag("exclude")
                 .about("Exclude patterns from the search")
                 // .next_line_help(true)
