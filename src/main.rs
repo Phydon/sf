@@ -124,7 +124,9 @@ fn sf() -> Command {
             "SIMPLE FIND".bold().truecolor(250, 0, 104),
             "Leann Phydon <leann.phydon@gmail.com>".italic().dimmed()
         ))
+        // TODO add more
         .long_about(format!("{}", "Simple file search",))
+        // TODO update version
         .version("1.0.0")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
@@ -218,14 +220,24 @@ fn forwards_search(
     for entry in fs::read_dir(search_path)? {
         let entry = entry?;
 
-        // FIXME no recursion possible
-        // make sure to keep searching in directories
+        if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
+            let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
+            entry_path.push_str("\\");
+            let path = Path::new(&entry_path);
+            forwards_search(
+                pattern,
+                &path.to_path_buf(),
+                &exclude_patterns,
+                file_flag,
+                dir_flag,
+                search_hits,
+            )?;
+        }
+
         if file_flag && !entry.path().is_file() {
             continue;
         }
 
-        // FIXME no recursion possible
-        // make sure to keep searching in directories
         if dir_flag && !entry.path().is_dir() {
             continue;
         }
@@ -245,20 +257,6 @@ fn forwards_search(
             if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it)) {
                 search_hits.push(entry.path());
             }
-        }
-
-        if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
-            let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
-            entry_path.push_str("\\");
-            let path = Path::new(&entry_path);
-            forwards_search(
-                pattern,
-                &path.to_path_buf(),
-                &exclude_patterns,
-                file_flag,
-                dir_flag,
-                search_hits,
-            )?;
         }
     }
 
