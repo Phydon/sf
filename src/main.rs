@@ -56,14 +56,41 @@ fn main() {
         let pattern = args[0];
         let path = Path::new(&args[1]).to_path_buf();
 
-        if let Err(err) = search(pattern, &path, file_flag, dir_flag) {
-            error!(
-                "Unable to find anything with {} in {}: {}",
-                pattern,
-                path.display(),
-                err
-            );
-            process::exit(1);
+        let mut exclude_patterns = Vec::new();
+        match matches.subcommand() {
+            Some(("exclude", sub_matches)) => {
+                if let Some(mut args) = sub_matches
+                    .get_many::<String>("exclude")
+                    .map(|a| a.collect::<Vec<_>>())
+                {
+                    exclude_patterns.append(&mut args);
+
+                    if let Err(err) = search(pattern, &path, &exclude_patterns, file_flag, dir_flag)
+                    {
+                        error!(
+                            "Unable to find anything with {} in {}: {}",
+                            pattern,
+                            path.display(),
+                            err
+                        );
+                        process::exit(1);
+                    }
+                } else {
+                    error!("Error while trying to get patterns to exclude");
+                    process::exit(1);
+                }
+            }
+            _ => {
+                if let Err(err) = search(pattern, &path, &exclude_patterns, file_flag, dir_flag) {
+                    error!(
+                        "Unable to find anything with {} in {}: {}",
+                        pattern,
+                        path.display(),
+                        err
+                    );
+                    process::exit(1);
+                }
+            }
         }
     } else {
         match matches.subcommand() {
@@ -123,15 +150,48 @@ fn sf() -> Command {
                 .action(ArgAction::SetTrue),
         )
         .subcommand(
+            Command::new("exclude")
+                .short_flag('e')
+                .long_flag("exclude")
+                .about("Exclude patterns from the search")
+                // .next_line_help(true)
+                .long_about(format!(
+                    "{}\n{}",
+                    "Exclude patterns from the search", "Must be provided as the last argument"
+                ))
+                .arg_required_else_help(true)
+                .arg(
+                    Arg::new("exclude")
+                        .help("Enter patterns to exclude from the search")
+                        .action(ArgAction::Set)
+                        .num_args(1..)
+                        .value_name("PATTERN"),
+                ),
+        )
+        .subcommand(
             Command::new("log")
                 .short_flag('L')
+                .long_flag("log")
                 .about("Show content of the log file"),
         )
 }
 
-fn search(pattern: &str, path: &PathBuf, file_flag: bool, dir_flag: bool) -> io::Result<()> {
+fn search(
+    pattern: &str,
+    path: &PathBuf,
+    exclude_patterns: &Vec<&String>,
+    file_flag: bool,
+    dir_flag: bool,
+) -> io::Result<()> {
     let mut search_hits = Vec::new();
-    forwards_search(pattern, path, file_flag, dir_flag, &mut search_hits)?;
+    forwards_search(
+        pattern,
+        path,
+        &exclude_patterns,
+        file_flag,
+        dir_flag,
+        &mut search_hits,
+    )?;
     get_search_hits(search_hits);
 
     Ok(())
@@ -140,6 +200,7 @@ fn search(pattern: &str, path: &PathBuf, file_flag: bool, dir_flag: bool) -> io:
 fn forwards_search(
     pattern: &str,
     path: &PathBuf,
+    exclude_patterns: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
     search_hits: &mut Vec<PathBuf>,
@@ -172,8 +233,14 @@ fn forwards_search(
             error!("Unable to get the filename of {}", entry.path().display());
         }
 
-        if name.contains(pattern) {
-            search_hits.push(entry.path());
+        if exclude_patterns.is_empty() {
+            if name.contains(pattern) {
+                search_hits.push(entry.path());
+            }
+        } else {
+            if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it)) {
+                search_hits.push(entry.path());
+            }
         }
 
         if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
@@ -183,6 +250,7 @@ fn forwards_search(
             forwards_search(
                 pattern,
                 &path.to_path_buf(),
+                &exclude_patterns,
                 file_flag,
                 dir_flag,
                 search_hits,
