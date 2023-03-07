@@ -7,7 +7,10 @@ use flexi_logger::{detailed_format, Duplicate, FileSpec, Logger};
 use log::error;
 
 use std::{
-    env, fs, io,
+    env,
+    // ffi::OsStr,
+    fs,
+    io,
     path::{Path, PathBuf},
     process,
 };
@@ -56,6 +59,14 @@ fn main() {
         let pattern = args[0];
         let path = Path::new(&args[1]).to_path_buf();
 
+        let mut ext = Vec::new();
+        if let Some(mut extensions) = matches
+            .get_many::<String>("extension")
+            .map(|a| a.collect::<Vec<_>>())
+        {
+            ext.append(&mut extensions);
+        }
+
         let mut exclude_patterns = Vec::new();
         match matches.subcommand() {
             Some(("exclude", sub_matches)) => {
@@ -65,7 +76,8 @@ fn main() {
                 {
                     exclude_patterns.append(&mut args);
 
-                    if let Err(err) = search(pattern, &path, &exclude_patterns, file_flag, dir_flag)
+                    if let Err(err) =
+                        search(pattern, &path, &exclude_patterns, &ext, file_flag, dir_flag)
                     {
                         error!(
                             "Unable to find anything with {} in {}: {}",
@@ -81,7 +93,9 @@ fn main() {
                 }
             }
             _ => {
-                if let Err(err) = search(pattern, &path, &exclude_patterns, file_flag, dir_flag) {
+                if let Err(err) =
+                    search(pattern, &path, &exclude_patterns, &ext, file_flag, dir_flag)
+                {
                     error!(
                         "Unable to find anything with {} in {}: {}",
                         pattern,
@@ -138,6 +152,20 @@ fn sf() -> Command {
                 .value_names(["PATTERN", "PATH"]),
         )
         .arg(
+            Arg::new("extension")
+                .short('e')
+                .long("extension")
+                .help("Only search in files with the given extensions")
+                .long_help(format!(
+                    "{}\n{}",
+                    "Only search in files with the given extensions",
+                    "Must be provided after the pattern and the search path"
+                ))
+                .action(ArgAction::Set)
+                .num_args(1..)
+                .value_name("EXTENSIONS"),
+        )
+        .arg(
             Arg::new("file")
                 .short('f')
                 .long("file")
@@ -156,10 +184,10 @@ fn sf() -> Command {
                 .short_flag('E')
                 .long_flag("exclude")
                 .about("Exclude patterns from the search")
-                // .next_line_help(true)
                 .long_about(format!(
                     "{}\n{}",
-                    "Exclude patterns from the search", "Must be provided as the last argument"
+                    "Exclude patterns from the search",
+                    "Must be provided after the pattern and the search path"
                 ))
                 .arg_required_else_help(true)
                 .arg(
@@ -167,7 +195,7 @@ fn sf() -> Command {
                         .help("Enter patterns to exclude from the search")
                         .action(ArgAction::Set)
                         .num_args(1..)
-                        .value_name("PATTERN"),
+                        .value_name("PATTERNS"),
                 ),
         )
         .subcommand(
@@ -182,6 +210,7 @@ fn search(
     pattern: &str,
     path: &PathBuf,
     exclude_patterns: &Vec<&String>,
+    extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
 ) -> io::Result<()> {
@@ -190,6 +219,7 @@ fn search(
         pattern,
         path,
         &exclude_patterns,
+        &extensions,
         file_flag,
         dir_flag,
         &mut search_hits,
@@ -203,6 +233,7 @@ fn forwards_search(
     pattern: &str,
     path: &PathBuf,
     exclude_patterns: &Vec<&String>,
+    extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
     search_hits: &mut Vec<PathBuf>,
@@ -228,10 +259,34 @@ fn forwards_search(
                 pattern,
                 &path.to_path_buf(),
                 &exclude_patterns,
+                &extensions,
                 file_flag,
                 dir_flag,
                 search_hits,
             )?;
+        }
+
+        // FIXME what`s wrong here??
+        // why does it print out dirs?
+
+        // let entry_extension = entry
+        //     .path()
+        //     .extension()
+        //     .unwrap_or_else(|| OsStr::new(""))
+        //     .to_string_lossy()
+        //     .to_string();
+        let mut entry_extension = String::new();
+        if let Some(extension) = entry.path().extension() {
+            entry_extension.push_str(&extension.to_string_lossy().to_string());
+        }
+
+        if !extensions.is_empty()
+            && !entry_extension.is_empty()
+            && entry.path().is_file()
+            && !extensions.iter().any(|&it| &entry_extension == it)
+        {
+            // println!("EXT: {entry_extension}");
+            continue;
         }
 
         if file_flag && !entry.path().is_file() {
