@@ -25,7 +25,8 @@ Options:
   -p, --performance                Disable everything that slows down the search
   -s, --stats                      Show the number of search results at the end
   -h, --help                       Print help (see more with '--help')
-  -V, --version                    Print version```
+  -V, --version                    Print version
+```
 
 ## Installation
 
