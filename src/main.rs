@@ -197,7 +197,6 @@ fn search(
     let mut search_hits = Vec::new();
 
     let spinner_style = ProgressStyle::with_template("{spinner:.red} {msg}").unwrap();
-    // .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
 
     let pb = ProgressBar::new_spinner();
     pb.enable_steady_tick(Duration::from_millis(120));
@@ -259,6 +258,10 @@ fn forwards_search(
 
     for entry in fs::read_dir(search_path)? {
         let entry = entry?;
+
+        if entry.path().is_symlink() {
+            continue;
+        }
 
         if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
             let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
