@@ -14,14 +14,15 @@ __Simple Find__
   * via ```--exclude``` command
 * show number of search results and search time
   * via ```--stats``` flag
+* accepts '.' as current directory
 
 ## Example
 
 ```sf ron . -s```
 
-![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_spinner.png)
+![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_s_spinner.png)
 
-![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_done.png)
+![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_s_done.png)
 
 	
 ## Usage
