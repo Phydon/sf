@@ -4,7 +4,7 @@
 use clap::{Arg, ArgAction, Command};
 use colored::*;
 use flexi_logger::{detailed_format, Duplicate, FileSpec, Logger};
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use log::{error, warn};
 
 use std::{
@@ -14,7 +14,7 @@ use std::{
     io,
     path::{Path, PathBuf},
     process,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 fn main() {
@@ -54,7 +54,7 @@ fn main() {
     let matches = sf().get_matches();
     let file_flag = matches.get_flag("file");
     let dir_flag = matches.get_flag("dir");
-    let no_stats_flag = matches.get_flag("no-stats");
+    let stats_flag = matches.get_flag("stats");
     if let Some(args) = matches
         .get_many::<String>("args")
         .map(|a| a.collect::<Vec<_>>())
@@ -86,7 +86,7 @@ fn main() {
                         &ext,
                         file_flag,
                         dir_flag,
-                        no_stats_flag,
+                        stats_flag,
                     );
                 } else {
                     error!("Error while trying to get patterns to exclude");
@@ -100,7 +100,7 @@ fn main() {
                 &ext,
                 file_flag,
                 dir_flag,
-                no_stats_flag,
+                stats_flag,
             ),
         }
     } else {
@@ -177,10 +177,10 @@ fn sf() -> Command {
                 .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("no-stats")
-                .short('n')
-                .long("no-stats")
-                .help("Don`t show the number of search results at the end")
+            Arg::new("stats")
+                .short('s')
+                .long("stats")
+                .help("Show the number of search results at the end")
                 .long_help(format!(
                     "{}\n{}",
                     "Don`t show the number of search results at the end",
@@ -222,83 +222,58 @@ fn search(
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
-    no_stats_flag: bool,
+    stats_flag: bool,
 ) {
-    let mut search_hits = Vec::new();
+    let start = Instant::now();
+    let mut search_hits = 0;
 
-    if no_stats_flag {
-        if let Err(err) = forwards_search(
-            pattern,
-            path,
-            &exclude_patterns,
-            &extensions,
-            file_flag,
-            dir_flag,
-            no_stats_flag,
-            &mut search_hits,
-        ) {
-            match err.kind() {
-                io::ErrorKind::NotFound => {
-                    warn!("\'{}\' not found: {}", path.display(), err);
-                }
-                io::ErrorKind::PermissionDenied => {
-                    warn!(
-                        "You don`t have access to a source in \'{}\': {}",
-                        path.display(),
-                        err
-                    );
-                }
-                _ => {
-                    error!(
-                        "Error while scanning entries for {} in \'{}\': {}",
-                        pattern,
-                        path.display(),
-                        err
-                    );
-                }
+    let spinner_style = ProgressStyle::with_template("{spinner:.red} {msg}").unwrap();
+
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(Duration::from_millis(120));
+    pb.set_style(spinner_style);
+    pb.set_message(format!("{}", "searching".truecolor(250, 0, 104)));
+    if let Err(err) = forwards_search(
+        pattern,
+        path,
+        &exclude_patterns,
+        &extensions,
+        file_flag,
+        dir_flag,
+        &mut search_hits,
+        pb.clone(),
+    ) {
+        match err.kind() {
+            io::ErrorKind::NotFound => {
+                warn!("\'{}\' not found: {}", path.display(), err);
             }
-        };
-    } else {
-        let spinner_style = ProgressStyle::with_template("{spinner:.red} {msg}").unwrap();
-
-        let pb = ProgressBar::new_spinner();
-        pb.enable_steady_tick(Duration::from_millis(120));
-        pb.set_style(spinner_style);
-        pb.set_message(format!("{}", "searching".truecolor(250, 0, 104)));
-        if let Err(err) = forwards_search(
-            pattern,
-            path,
-            &exclude_patterns,
-            &extensions,
-            file_flag,
-            dir_flag,
-            no_stats_flag,
-            &mut search_hits,
-        ) {
-            match err.kind() {
-                io::ErrorKind::NotFound => {
-                    warn!("\'{}\' not found: {}", path.display(), err);
-                }
-                io::ErrorKind::PermissionDenied => {
-                    warn!(
-                        "You don`t have access to a source in \'{}\': {}",
-                        path.display(),
-                        err
-                    );
-                }
-                _ => {
-                    error!(
-                        "Error while scanning entries for {} in \'{}\': {}",
-                        pattern,
-                        path.display(),
-                        err
-                    );
-                }
+            io::ErrorKind::PermissionDenied => {
+                warn!(
+                    "You don`t have access to a source in \'{}\': {}",
+                    path.display(),
+                    err
+                );
             }
-        };
-        pb.finish_and_clear();
+            _ => {
+                error!(
+                    "Error while scanning entries for {} in \'{}\': {}",
+                    pattern,
+                    path.display(),
+                    err
+                );
+            }
+        }
+    };
+    pb.finish_and_clear();
 
+    if stats_flag {
         get_search_hits(search_hits);
+        println!(
+            "{}",
+            HumanDuration(start.elapsed())
+                .to_string()
+                .truecolor(112, 110, 255)
+        );
     }
 }
 
@@ -309,8 +284,8 @@ fn forwards_search(
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
-    no_stats_flag: bool,
-    search_hits: &mut Vec<PathBuf>,
+    search_hits: &mut u64,
+    pb: ProgressBar,
 ) -> io::Result<()> {
     let mut search_path = Path::new(&path).to_path_buf();
 
@@ -341,8 +316,8 @@ fn forwards_search(
                 &extensions,
                 file_flag,
                 dir_flag,
-                no_stats_flag,
                 search_hits,
+                pb.clone(),
             ) {
                 match err.kind() {
                     io::ErrorKind::NotFound => {
@@ -414,19 +389,13 @@ fn forwards_search(
 
         if exclude_patterns.is_empty() {
             if name.contains(pattern) {
-                if no_stats_flag {
-                    println!("{}\\{}", parent, name.truecolor(59, 179, 140));
-                } else {
-                    search_hits.push(entry.path());
-                }
+                *search_hits += 1;
+                pb.println(format!("{}\\{}", parent, name.truecolor(59, 179, 140)));
             }
         } else {
             if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it)) {
-                if no_stats_flag {
-                    println!("{}\\{}", parent, name.truecolor(59, 179, 140));
-                } else {
-                    search_hits.push(entry.path());
-                }
+                *search_hits += 1;
+                pb.println(format!("{}\\{}", parent, name.truecolor(59, 179, 140)));
             }
         }
     }
@@ -434,39 +403,39 @@ fn forwards_search(
     Ok(())
 }
 
-fn get_search_hits(search_hits: Vec<PathBuf>) {
-    for hit in &search_hits {
-        let parent = hit
-            .parent()
-            .unwrap_or_else(|| Path::new(""))
-            .to_string_lossy()
-            .to_string();
+fn get_search_hits(search_hits: u64) {
+    // for hit in &search_hits {
+    //     let parent = hit
+    //         .parent()
+    //         .unwrap_or_else(|| Path::new(""))
+    //         .to_string_lossy()
+    //         .to_string();
 
-        let mut name = String::new();
-        if let Some(filename) = hit.file_name() {
-            name.push_str(&filename.to_string_lossy().to_string());
-            println!("{}\\{}", parent, name.truecolor(59, 179, 140));
-        } else {
-            // TODO remove? how to handle this error?
-            // error!("Unable to get the filename of {}", hit.display());
-            println!("{}", hit.display());
-        }
-    }
+    //     let mut name = String::new();
+    //     if let Some(filename) = hit.file_name() {
+    //         name.push_str(&filename.to_string_lossy().to_string());
+    //         println!("{}\\{}", parent, name.truecolor(59, 179, 140));
+    //     } else {
+    //         // TODO remove? how to handle this error?
+    //         // error!("Unable to get the filename of {}", hit.display());
+    //         println!("{}", hit.display());
+    //     }
+    // }
 
-    if search_hits.len() == 0 {
+    if search_hits == 0 {
         println!(
             "found {} matches",
-            search_hits.len().to_string().truecolor(250, 0, 104).bold()
+            search_hits.to_string().truecolor(250, 0, 104).bold()
         );
-    } else if search_hits.len() == 1 {
+    } else if search_hits == 1 {
         println!(
             "\nfound {} match",
-            search_hits.len().to_string().truecolor(59, 179, 140).bold()
+            search_hits.to_string().truecolor(59, 179, 140).bold()
         );
     } else {
         println!(
             "\nfound {} matches",
-            search_hits.len().to_string().truecolor(59, 179, 140).bold()
+            search_hits.to_string().truecolor(59, 179, 140).bold()
         );
     }
 }
