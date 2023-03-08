@@ -185,8 +185,10 @@ fn sf() -> Command {
                 .long("performance")
                 .help("Disable everything that slows down the search")
                 .long_help(format!(
-                    "{}\n{}",
-                    "Disable everything that slows down the search", "Focus on performance"
+                    "{}\n{}\n{}",
+                    "Focus on performance",
+                    "Disable everything that slows down the search",
+                    "Only significant with larger searches"
                 ))
                 .action(ArgAction::SetTrue),
         )
