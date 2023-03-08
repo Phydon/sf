@@ -7,13 +7,21 @@ __Simple Find__
 * smart-case by default
 * no regex search (for now)
 * colourful output and search indicating spinner by default 
-  * disable via --performance flag
+  * disable via ```--performance``` flag
 * filter by file, directory (and extension (TODO))
 * ignores symlinks
 * exclude patterns from the search 
-  * via --exclude flag
+  * via ```--exclude``` command
 * show number of search results and search time
-  * via --stats flag
+  * via ```--stats``` flag
+
+## Example
+
+```sf ron . -s```
+
+![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_spinner.png)
+
+![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_done.png)
 
 	
 ## Usage
