@@ -4,7 +4,7 @@
 use clap::{Arg, ArgAction, Command};
 use colored::*;
 use flexi_logger::{detailed_format, Duplicate, FileSpec, Logger};
-use log::error;
+use log::{error, warn};
 
 use std::{
     env,
@@ -76,35 +76,15 @@ fn main() {
                 {
                     exclude_patterns.append(&mut args);
 
-                    if let Err(err) =
-                        search(pattern, &path, &exclude_patterns, &ext, file_flag, dir_flag)
-                    {
-                        error!(
-                            "Unable to find anything with {} in {}: {}",
-                            pattern,
-                            path.display(),
-                            err
-                        );
-                        process::exit(1);
-                    }
+                    // TODO add spinner or progress_bar()
+                    search(pattern, &path, &exclude_patterns, &ext, file_flag, dir_flag);
                 } else {
                     error!("Error while trying to get patterns to exclude");
                     process::exit(1);
                 }
             }
-            _ => {
-                if let Err(err) =
-                    search(pattern, &path, &exclude_patterns, &ext, file_flag, dir_flag)
-                {
-                    error!(
-                        "Unable to find anything with {} in {}: {}",
-                        pattern,
-                        path.display(),
-                        err
-                    );
-                    process::exit(1);
-                }
-            }
+            // TODO add spinner or progress_bar()
+            _ => search(pattern, &path, &exclude_patterns, &ext, file_flag, dir_flag),
         }
     } else {
         match matches.subcommand() {
@@ -213,9 +193,10 @@ fn search(
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
-) -> io::Result<()> {
+) {
     let mut search_hits = Vec::new();
-    forwards_search(
+
+    if let Err(err) = forwards_search(
         pattern,
         path,
         &exclude_patterns,
@@ -223,10 +204,30 @@ fn search(
         file_flag,
         dir_flag,
         &mut search_hits,
-    )?;
-    get_search_hits(search_hits);
+    ) {
+        match err.kind() {
+            io::ErrorKind::NotFound => {
+                warn!("\'{}\' not found: {}", path.display(), err);
+            }
+            io::ErrorKind::PermissionDenied => {
+                warn!(
+                    "You don`t have access to a source in \'{}\': {}",
+                    path.display(),
+                    err
+                );
+            }
+            _ => {
+                error!(
+                    "Error while scanning entries for {} in \'{}\': {}",
+                    pattern,
+                    path.display(),
+                    err
+                );
+            }
+        }
+    };
 
-    Ok(())
+    get_search_hits(search_hits);
 }
 
 fn forwards_search(
@@ -255,7 +256,8 @@ fn forwards_search(
             let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
             entry_path.push_str("\\");
             let path = Path::new(&entry_path);
-            forwards_search(
+
+            if let Err(err) = forwards_search(
                 pattern,
                 &path.to_path_buf(),
                 &exclude_patterns,
@@ -263,7 +265,28 @@ fn forwards_search(
                 file_flag,
                 dir_flag,
                 search_hits,
-            )?;
+            ) {
+                match err.kind() {
+                    io::ErrorKind::NotFound => {
+                        warn!("\'{}\' not found: {}", path.display(), err);
+                    }
+                    io::ErrorKind::PermissionDenied => {
+                        warn!(
+                            "You don`t have access to a source in \'{}\': {}",
+                            path.display(),
+                            err
+                        );
+                    }
+                    _ => {
+                        error!(
+                            "Error while scanning entries for {} in \'{}\': {}",
+                            pattern,
+                            path.display(),
+                            err
+                        );
+                    }
+                }
+            };
         }
 
         // FIXME what`s wrong here??
@@ -275,19 +298,19 @@ fn forwards_search(
         //     .unwrap_or_else(|| OsStr::new(""))
         //     .to_string_lossy()
         //     .to_string();
-        let mut entry_extension = String::new();
-        if let Some(extension) = entry.path().extension() {
-            entry_extension.push_str(&extension.to_string_lossy().to_string());
-        }
+        // let mut entry_extension = String::new();
+        // if let Some(extension) = entry.path().extension() {
+        //     entry_extension.push_str(&extension.to_string_lossy().to_string());
+        // }
 
-        if !extensions.is_empty()
-            && !entry_extension.is_empty()
-            && entry.path().is_file()
-            && !extensions.iter().any(|&it| &entry_extension == it)
-        {
-            // println!("EXT: {entry_extension}");
-            continue;
-        }
+        // if !extensions.is_empty()
+        //     && !entry_extension.is_empty()
+        //     && entry.path().is_file()
+        //     && !extensions.iter().any(|&it| &entry_extension == it)
+        // {
+        // println!("EXT: {entry_extension}");
+        //     continue;
+        // }
 
         if file_flag && !entry.path().is_file() {
             continue;
@@ -397,6 +420,7 @@ fn show_log_file(config_dir: &PathBuf) -> io::Result<String> {
     }
 }
 
+// TODO
 // fn backwards_search() {
 //     let mut args = Vec::new();
 
