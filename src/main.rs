@@ -141,7 +141,7 @@ fn sf() -> Command {
         // TODO add more
         .long_about(format!("{}", "Simple file search",))
         // TODO update version
-        .version("1.0.0")
+        .version("1.0.1")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
