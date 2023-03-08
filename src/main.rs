@@ -54,7 +54,7 @@ fn main() {
     let matches = sf().get_matches();
     let file_flag = matches.get_flag("file");
     let dir_flag = matches.get_flag("dir");
-    let no_stats_flag = matches.get_flag("no_stats");
+    let no_stats_flag = matches.get_flag("no-stats");
     if let Some(args) = matches
         .get_many::<String>("args")
         .map(|a| a.collect::<Vec<_>>())
@@ -405,25 +405,17 @@ fn forwards_search(
             error!("Unable to get the filename of {}", entry.path().display());
         }
 
+        let parent = entry
+            .path()
+            .parent()
+            .unwrap_or_else(|| Path::new(""))
+            .to_string_lossy()
+            .to_string();
+
         if exclude_patterns.is_empty() {
             if name.contains(pattern) {
                 if no_stats_flag {
-                    let parent = entry
-                        .path()
-                        .parent()
-                        .unwrap_or_else(|| Path::new(""))
-                        .to_string_lossy()
-                        .to_string();
-
-                    let mut name = String::new();
-                    if let Some(filename) = entry.path().file_name() {
-                        name.push_str(&filename.to_string_lossy().to_string());
-                        println!("{}\\{}", parent, name.truecolor(59, 179, 140));
-                    } else {
-                        // TODO remove? how to handle this error?
-                        // error!("Unable to get the filename of {}", entry.path().display());
-                        println!("{}", entry.path().display());
-                    }
+                    println!("{}\\{}", parent, name.truecolor(59, 179, 140));
                 } else {
                     search_hits.push(entry.path());
                 }
@@ -431,22 +423,7 @@ fn forwards_search(
         } else {
             if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it)) {
                 if no_stats_flag {
-                    let parent = entry
-                        .path()
-                        .parent()
-                        .unwrap_or_else(|| Path::new(""))
-                        .to_string_lossy()
-                        .to_string();
-
-                    let mut name = String::new();
-                    if let Some(filename) = entry.path().file_name() {
-                        name.push_str(&filename.to_string_lossy().to_string());
-                        println!("{}\\{}", parent, name.truecolor(59, 179, 140));
-                    } else {
-                        // TODO remove? how to handle this error?
-                        // error!("Unable to get the filename of {}", entry.path().display());
-                        println!("{}", entry.path().display());
-                    }
+                    println!("{}\\{}", parent, name.truecolor(59, 179, 140));
                 } else {
                     search_hits.push(entry.path());
                 }
