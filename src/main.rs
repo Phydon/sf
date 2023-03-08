@@ -4,6 +4,7 @@
 use clap::{Arg, ArgAction, Command};
 use colored::*;
 use flexi_logger::{detailed_format, Duplicate, FileSpec, Logger};
+use indicatif::{ProgressBar, ProgressStyle};
 use log::{error, warn};
 
 use std::{
@@ -13,6 +14,7 @@ use std::{
     io,
     path::{Path, PathBuf},
     process,
+    time::Duration,
 };
 
 fn main() {
@@ -76,14 +78,12 @@ fn main() {
                 {
                     exclude_patterns.append(&mut args);
 
-                    // TODO add spinner or progress_bar()
                     search(pattern, &path, &exclude_patterns, &ext, file_flag, dir_flag);
                 } else {
                     error!("Error while trying to get patterns to exclude");
                     process::exit(1);
                 }
             }
-            // TODO add spinner or progress_bar()
             _ => search(pattern, &path, &exclude_patterns, &ext, file_flag, dir_flag),
         }
     } else {
@@ -196,6 +196,13 @@ fn search(
 ) {
     let mut search_hits = Vec::new();
 
+    let spinner_style = ProgressStyle::with_template("{spinner:.red} {msg}").unwrap();
+    // .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
+
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(Duration::from_millis(120));
+    pb.set_style(spinner_style);
+    pb.set_message(format!("{}", "searching".truecolor(250, 0, 104)));
     if let Err(err) = forwards_search(
         pattern,
         path,
@@ -226,6 +233,7 @@ fn search(
             }
         }
     };
+    pb.finish_and_clear();
 
     get_search_hits(search_hits);
 }
