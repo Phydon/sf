@@ -54,6 +54,7 @@ fn main() {
     let matches = sf().get_matches();
     let file_flag = matches.get_flag("file");
     let dir_flag = matches.get_flag("dir");
+    let performance_flag = matches.get_flag("performance");
     let stats_flag = matches.get_flag("stats");
     if let Some(args) = matches
         .get_many::<String>("args")
@@ -86,6 +87,7 @@ fn main() {
                         &ext,
                         file_flag,
                         dir_flag,
+                        performance_flag,
                         stats_flag,
                     );
                 } else {
@@ -100,6 +102,7 @@ fn main() {
                 &ext,
                 file_flag,
                 dir_flag,
+                performance_flag,
                 stats_flag,
             ),
         }
@@ -149,6 +152,13 @@ fn sf() -> Command {
                 .value_names(["PATTERN", "PATH"]),
         )
         .arg(
+            Arg::new("dir")
+                .short('d')
+                .long("dir")
+                .help("Search only in directory names for the pattern")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             Arg::new("extension")
                 .short('e')
                 .long("extension")
@@ -170,10 +180,14 @@ fn sf() -> Command {
                 .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("dir")
-                .short('d')
-                .long("dir")
-                .help("Search only in directory names for the pattern")
+            Arg::new("performance")
+                .short('p')
+                .long("performance")
+                .help("Disable everything that slows down the search")
+                .long_help(format!(
+                    "{}\n{}",
+                    "Disable everything that slows down the search", "Focus on performance"
+                ))
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -222,17 +236,66 @@ fn search(
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
+    performace_flag: bool,
     stats_flag: bool,
 ) {
     let start = Instant::now();
     let mut search_hits = 0;
 
-    let spinner_style = ProgressStyle::with_template("{spinner:.red} {msg}").unwrap();
+    if performace_flag {
+        forwards_search_and_catch_errors(
+            pattern,
+            path,
+            &exclude_patterns,
+            &extensions,
+            file_flag,
+            dir_flag,
+            performace_flag,
+            &mut search_hits,
+            None,
+        );
+    } else {
+        let spinner_style = ProgressStyle::with_template("{spinner:.red} {msg}").unwrap();
+        let pb = ProgressBar::new_spinner();
+        pb.enable_steady_tick(Duration::from_millis(120));
+        pb.set_style(spinner_style);
+        pb.set_message(format!("{}", "searching".truecolor(250, 0, 104)));
+        forwards_search_and_catch_errors(
+            pattern,
+            path,
+            &exclude_patterns,
+            &extensions,
+            file_flag,
+            dir_flag,
+            performace_flag,
+            &mut search_hits,
+            Some(pb.clone()),
+        );
+        pb.finish_and_clear();
+    }
 
-    let pb = ProgressBar::new_spinner();
-    pb.enable_steady_tick(Duration::from_millis(120));
-    pb.set_style(spinner_style);
-    pb.set_message(format!("{}", "searching".truecolor(250, 0, 104)));
+    if stats_flag {
+        get_search_hits(search_hits);
+        println!(
+            "{}",
+            HumanDuration(start.elapsed())
+                .to_string()
+                .truecolor(112, 110, 255)
+        );
+    }
+}
+
+fn forwards_search_and_catch_errors(
+    pattern: &str,
+    path: &PathBuf,
+    exclude_patterns: &Vec<&String>,
+    extensions: &Vec<&String>,
+    file_flag: bool,
+    dir_flag: bool,
+    performance_flag: bool,
+    search_hits: &mut u64,
+    pb: Option<ProgressBar>,
+) {
     if let Err(err) = forwards_search(
         pattern,
         path,
@@ -240,7 +303,8 @@ fn search(
         &extensions,
         file_flag,
         dir_flag,
-        &mut search_hits,
+        performance_flag,
+        search_hits,
         pb.clone(),
     ) {
         match err.kind() {
@@ -264,17 +328,6 @@ fn search(
             }
         }
     };
-    pb.finish_and_clear();
-
-    if stats_flag {
-        get_search_hits(search_hits);
-        println!(
-            "{}",
-            HumanDuration(start.elapsed())
-                .to_string()
-                .truecolor(112, 110, 255)
-        );
-    }
 }
 
 fn forwards_search(
@@ -284,8 +337,9 @@ fn forwards_search(
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
+    performance_flag: bool,
     search_hits: &mut u64,
-    pb: ProgressBar,
+    pb: Option<ProgressBar>,
 ) -> io::Result<()> {
     let mut search_path = Path::new(&path).to_path_buf();
 
@@ -316,6 +370,7 @@ fn forwards_search(
                 &extensions,
                 file_flag,
                 dir_flag,
+                performance_flag,
                 search_hits,
                 pb.clone(),
             ) {
@@ -390,12 +445,32 @@ fn forwards_search(
         if exclude_patterns.is_empty() {
             if name.contains(pattern) {
                 *search_hits += 1;
-                pb.println(format!("{}\\{}", parent, name.truecolor(59, 179, 140)));
+
+                if performance_flag {
+                    println!("{}", format!("{}\\{}", parent, name));
+                } else {
+                    match pb.clone() {
+                        Some(pb) => {
+                            pb.println(format!("{}\\{}", parent, name.truecolor(59, 179, 140)))
+                        }
+                        None => {}
+                    }
+                }
             }
         } else {
             if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it)) {
                 *search_hits += 1;
-                pb.println(format!("{}\\{}", parent, name.truecolor(59, 179, 140)));
+
+                if performance_flag {
+                    println!("{}", format!("{}\\{}", parent, name));
+                } else {
+                    match pb.clone() {
+                        Some(pb) => {
+                            pb.println(format!("{}\\{}", parent, name.truecolor(59, 179, 140)))
+                        }
+                        None => {}
+                    }
+                }
             }
         }
     }
