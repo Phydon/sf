@@ -445,7 +445,7 @@ fn forwards_search(
             .to_string();
 
         if exclude_patterns.is_empty() {
-            if name.contains(pattern) {
+            if name.contains(pattern) || name.to_lowercase().contains(pattern) {
                 *search_hits += 1;
 
                 if performance_flag {
@@ -460,7 +460,12 @@ fn forwards_search(
                 }
             }
         } else {
-            if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it)) {
+            if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it))
+                || name.to_lowercase().contains(pattern)
+                    && exclude_patterns
+                        .iter()
+                        .all(|&it| !name.to_lowercase().contains(it.to_lowercase().as_str()))
+            {
                 *search_hits += 1;
 
                 if performance_flag {

@@ -4,6 +4,17 @@ __Simple Find__
 
 *simple file search*
 
+* smart-case by default
+* no regex search (for now)
+* colourful output and search indicating spinner by default 
+  * disable via --performance flag
+* filter by file, directory (and extension (TODO))
+* ignores symlinks
+* exclude patterns from the search 
+  * via --exclude flag
+* show number of search results and search time
+  * via --stats flag
+
 	
 ## Usage
 
