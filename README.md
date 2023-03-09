@@ -11,14 +11,14 @@ __Simple Find__
 * filter by file, directory and file-extension
 * ignores symlinks
 * exclude patterns from the search 
-  * via ```--exclude``` command
+  * via ```--exclude``` flag
+* include hidden files
+  * via ```--hidden``` flag
 * show number of search results and search time
   * via ```--stats``` flag
-* accepts '.' as current directory
+* accepts ```.``` as current directory
 
 ## Example
-
-- in the following examples ```.``` is used as a path for the current directory
 
 - search for every file and directory that contains the word 'ron', including ![*.ron files](https://github.com/ron-rs/ron)
 
@@ -51,6 +51,7 @@ Options:
   -e, --extension <EXTENSIONS>...  Only search in files with the given extensions
   -E, --exclude <PATTERNS>...      Enter patterns to exclude from the search
   -f, --file                       Search only in file names for the pattern
+  -H, --hidden                     Include hidden files and directories in search
   -p, --performance                Disable everything that slows down the search
   -s, --stats                      Show the number of search results at the end
   -h, --help                       Print help (see more with '--help')
@@ -63,6 +64,6 @@ Options:
 
 via Cargo or get the ![binary](https://github.com/Phydon/sf/releases)
 
-## TODO
+## Todo
 
 - speed up
