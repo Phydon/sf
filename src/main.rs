@@ -141,7 +141,7 @@ fn sf() -> Command {
         // TODO add more
         .long_about(format!("{}", "Simple file search",))
         // TODO update version
-        .version("1.0.1")
+        .version("1.0.2")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -453,7 +453,12 @@ fn forwards_search(
                 } else {
                     match pb.clone() {
                         Some(pb) => {
-                            pb.println(format!("{}\\{}", parent, name.truecolor(59, 179, 140)))
+                            let name_with_hi_pattern = highlight_pattern_in_name(&name, pattern);
+                            pb.println(format!(
+                                "{}\\{}",
+                                parent,
+                                name_with_hi_pattern.truecolor(59, 179, 140)
+                            ))
                         }
                         None => {}
                     }
@@ -473,7 +478,12 @@ fn forwards_search(
                 } else {
                     match pb.clone() {
                         Some(pb) => {
-                            pb.println(format!("{}\\{}", parent, name.truecolor(59, 179, 140)))
+                            let name_with_hi_pattern = highlight_pattern_in_name(&name, pattern);
+                            pb.println(format!(
+                                "{}\\{}",
+                                parent,
+                                name_with_hi_pattern.truecolor(59, 179, 140)
+                            ))
                         }
                         None => {}
                     }
@@ -519,6 +529,24 @@ fn get_search_hits(search_hits: u64) {
             "\nfound {} matches",
             search_hits.to_string().truecolor(59, 179, 140).bold()
         );
+    }
+}
+
+fn highlight_pattern_in_name(name: &str, pattern: &str) -> String {
+    let pat_in_name = name.find(pattern).unwrap_or_else(|| 9999999999);
+
+    if pat_in_name == 9999999999 {
+        return name.to_string();
+    } else {
+        let first_from_name = &name[..pat_in_name];
+        let last_from_name = &name[(pat_in_name + pattern.len())..];
+        let highlighted_pattern = pattern.truecolor(112, 110, 255).to_string();
+
+        let mut result = String::from(first_from_name);
+        result.push_str(&highlighted_pattern);
+        result.push_str(last_from_name);
+
+        result.to_string()
     }
 }
 
