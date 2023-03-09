@@ -8,7 +8,7 @@ __Simple Find__
 * no regex search (for now)
 * colourful output and search indicating spinner by default 
   * disable via ```--performance``` flag
-* filter by file, directory (and extension (TODO))
+* filter by file, directory and file-extension
 * ignores symlinks
 * exclude patterns from the search 
   * via ```--exclude``` command
@@ -40,16 +40,16 @@ __Simple Find__
 sf [OPTIONS] [PATTERN] [PATH] [COMMAND]
 
 Commands:
-  exclude, -E, --exclude  Exclude patterns from the search
-  log, -L, --log          Show content of the log file
-  help                    Print this message or the help of the given subcommand(s)
+  log, -L, --log  Show content of the log file
+  help            Print this message or the help of the given subcommand(s)
 
 Arguments:
-  [PATTERN] [PATH]  add a search pattern and a path
+  [PATTERN] [PATH]  Add a search pattern and a path
 
 Options:
   -d, --dir                        Search only in directory names for the pattern
   -e, --extension <EXTENSIONS>...  Only search in files with the given extensions
+  -E, --exclude <PATTERNS>...      Enter patterns to exclude from the search
   -f, --file                       Search only in file names for the pattern
   -p, --performance                Disable everything that slows down the search
   -s, --stats                      Show the number of search results at the end
