@@ -121,10 +121,21 @@ fn sf() -> Command {
             "SIMPLE FIND".bold().truecolor(250, 0, 104),
             "Leann Phydon <leann.phydon@gmail.com>".italic().dimmed()
         ))
-        // TODO add more
-        .long_about(format!("{}", "Simple file search",))
+        .long_about(format!(
+            "{}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}",
+            "Simple file search",
+            "- smart-case by default",
+            "- no regex search",
+            "- colourful output and search indicating spinner by default ",
+            "- filter by file, directory and file-extension",
+            "- ignores symlinks",
+            "- exclude patterns from the search ",
+            "- include hidden files",
+            "- show number of search results and search time",
+            "- accepts \'.\' as current directory"
+        ))
         // TODO update version
-        .version("1.0.3")
+        .version("1.0.4")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
