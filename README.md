@@ -21,6 +21,7 @@ __Simple Find__
 - in the following examples ```.``` is used as a path for the current directory
 
 - search for every file and directory that contains the word 'ron', including ![*.ron files](https://github.com/ron-rs/ron)
+
 ```sf ron . -s```
 
 ![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_s_spinner.png)
@@ -28,7 +29,8 @@ __Simple Find__
 ![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_s_done.png)
 
 
-- you can use ```sf``` to list all files and sub-directories recursively via an empty search pattern ```""```
+- you can use ```sf``` to list all files and sub-directories recursively via ```""``` as an empty search pattern 
+
 ```sf "" .```
 
 	
