@@ -8,10 +8,7 @@ use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use log::{error, warn};
 
 use std::{
-    env,
-    // ffi::OsStr,
-    fs,
-    io,
+    env, fs, io,
     path::{Path, PathBuf},
     process,
     time::{Duration, Instant},
@@ -63,49 +60,32 @@ fn main() {
         let pattern = args[0];
         let path = Path::new(&args[1]).to_path_buf();
 
-        let mut ext = Vec::new();
-        if let Some(mut extensions) = matches
+        let mut extensions = Vec::new();
+        if let Some(mut ext) = matches
             .get_many::<String>("extension")
             .map(|a| a.collect::<Vec<_>>())
         {
-            ext.append(&mut extensions);
+            extensions.append(&mut ext);
         }
 
         let mut exclude_patterns = Vec::new();
-        match matches.subcommand() {
-            Some(("exclude", sub_matches)) => {
-                if let Some(mut args) = sub_matches
-                    .get_many::<String>("exclude")
-                    .map(|a| a.collect::<Vec<_>>())
-                {
-                    exclude_patterns.append(&mut args);
-
-                    search(
-                        pattern,
-                        &path,
-                        &exclude_patterns,
-                        &ext,
-                        file_flag,
-                        dir_flag,
-                        performance_flag,
-                        stats_flag,
-                    );
-                } else {
-                    error!("Error while trying to get patterns to exclude");
-                    process::exit(1);
-                }
-            }
-            _ => search(
-                pattern,
-                &path,
-                &exclude_patterns,
-                &ext,
-                file_flag,
-                dir_flag,
-                performance_flag,
-                stats_flag,
-            ),
+        if let Some(mut excl) = matches
+            .get_many::<String>("exclude")
+            .map(|a| a.collect::<Vec<_>>())
+        {
+            exclude_patterns.append(&mut excl);
         }
+
+        search(
+            pattern,
+            &path,
+            &exclude_patterns,
+            &extensions,
+            file_flag,
+            dir_flag,
+            performance_flag,
+            stats_flag,
+        );
     } else {
         match matches.subcommand() {
             Some(("log", _)) => {
@@ -146,7 +126,7 @@ fn sf() -> Command {
         .arg_required_else_help(true)
         .arg(
             Arg::new("args")
-                .help("add a search pattern and a path")
+                .help("Add a search pattern and a path")
                 .action(ArgAction::Set)
                 .num_args(2)
                 .value_names(["PATTERN", "PATH"]),
@@ -171,6 +151,20 @@ fn sf() -> Command {
                 .action(ArgAction::Set)
                 .num_args(1..)
                 .value_name("EXTENSIONS"),
+        )
+        .arg(
+            Arg::new("exclude")
+                .short('E')
+                .long("exclude")
+                .help("Enter patterns to exclude from the search")
+                .long_help(format!(
+                    "{}\n{}",
+                    "Enter patterns to exclude from the search",
+                    "Must be provided after the pattern and the search path"
+                ))
+                .action(ArgAction::Set)
+                .num_args(1..)
+                .value_name("PATTERNS"),
         )
         .arg(
             Arg::new("file")
@@ -203,25 +197,6 @@ fn sf() -> Command {
                     "Prints out search results immediately when found"
                 ))
                 .action(ArgAction::SetTrue),
-        )
-        .subcommand(
-            Command::new("exclude")
-                .short_flag('E')
-                .long_flag("exclude")
-                .about("Exclude patterns from the search")
-                .long_about(format!(
-                    "{}\n{}",
-                    "Exclude patterns from the search",
-                    "Must be provided after the pattern and the search path"
-                ))
-                .arg_required_else_help(true)
-                .arg(
-                    Arg::new("exclude")
-                        .help("Enter patterns to exclude from the search")
-                        .action(ArgAction::Set)
-                        .num_args(1..)
-                        .value_name("PATTERNS"),
-                ),
         )
         .subcommand(
             Command::new("log")
@@ -399,29 +374,6 @@ fn forwards_search(
             };
         }
 
-        // FIXME what`s wrong here??
-        // why does it print out dirs?
-
-        // let entry_extension = entry
-        //     .path()
-        //     .extension()
-        //     .unwrap_or_else(|| OsStr::new(""))
-        //     .to_string_lossy()
-        //     .to_string();
-        // let mut entry_extension = String::new();
-        // if let Some(extension) = entry.path().extension() {
-        //     entry_extension.push_str(&extension.to_string_lossy().to_string());
-        // }
-
-        // if !extensions.is_empty()
-        //     && !entry_extension.is_empty()
-        //     && entry.path().is_file()
-        //     && !extensions.iter().any(|&it| &entry_extension == it)
-        // {
-        // println!("EXT: {entry_extension}");
-        //     continue;
-        // }
-
         if file_flag && !entry.path().is_file() {
             continue;
         }
@@ -444,76 +396,97 @@ fn forwards_search(
             .to_string_lossy()
             .to_string();
 
-        if exclude_patterns.is_empty() {
-            if name.contains(pattern) || name.to_lowercase().contains(pattern) {
-                *search_hits += 1;
+        if !extensions.is_empty() {
+            if entry.path().is_file() {
+                let mut entry_extension = String::new();
+                if let Some(extension) = entry.path().extension() {
+                    entry_extension.push_str(&extension.to_string_lossy().to_string());
 
-                if performance_flag {
-                    println!("{}", format!("{}\\{}", parent, name));
-                } else {
-                    match pb.clone() {
-                        Some(pb) => {
-                            let name_with_hi_pattern = highlight_pattern_in_name(&name, pattern);
-                            pb.println(format!(
-                                "{}\\{}",
-                                parent,
-                                name_with_hi_pattern.truecolor(59, 179, 140)
-                            ))
-                        }
-                        None => {}
+                    if extensions.iter().any(|&it| &entry_extension == it) {
+                        match_pattern_and_print(
+                            name,
+                            parent,
+                            pattern,
+                            pb.clone(),
+                            exclude_patterns,
+                            search_hits,
+                            performance_flag,
+                        );
                     }
                 }
+            } else {
+                continue;
             }
         } else {
-            if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it))
-                || name.to_lowercase().contains(pattern)
-                    && exclude_patterns
-                        .iter()
-                        .all(|&it| !name.to_lowercase().contains(it.to_lowercase().as_str()))
-            {
-                *search_hits += 1;
-
-                if performance_flag {
-                    println!("{}", format!("{}\\{}", parent, name));
-                } else {
-                    match pb.clone() {
-                        Some(pb) => {
-                            let name_with_hi_pattern = highlight_pattern_in_name(&name, pattern);
-                            pb.println(format!(
-                                "{}\\{}",
-                                parent,
-                                name_with_hi_pattern.truecolor(59, 179, 140)
-                            ))
-                        }
-                        None => {}
-                    }
-                }
-            }
+            match_pattern_and_print(
+                name,
+                parent,
+                pattern,
+                pb.clone(),
+                exclude_patterns,
+                search_hits,
+                performance_flag,
+            );
         }
     }
 
     Ok(())
 }
 
+fn match_pattern_and_print(
+    name: String,
+    parent: String,
+    pattern: &str,
+    pb: Option<ProgressBar>,
+    exclude_patterns: &Vec<&String>,
+    search_hits: &mut u64,
+    performance_flag: bool,
+) {
+    if exclude_patterns.is_empty() {
+        if name.contains(pattern) || name.to_lowercase().contains(pattern) {
+            *search_hits += 1;
+
+            print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
+        }
+    } else {
+        if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it))
+            || name.to_lowercase().contains(pattern)
+                && exclude_patterns
+                    .iter()
+                    .all(|&it| !name.to_lowercase().contains(it.to_lowercase().as_str()))
+        {
+            *search_hits += 1;
+
+            print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
+        }
+    }
+}
+
+fn print_search_hit(
+    name: String,
+    parent: String,
+    pattern: &str,
+    pb: Option<ProgressBar>,
+    performance_flag: bool,
+) {
+    if performance_flag {
+        println!("{}", format!("{}\\{}", parent, name));
+    } else {
+        match pb.clone() {
+            Some(pb) => {
+                let name_with_hi_pattern = highlight_pattern_in_name(&name, pattern);
+                pb.println(format!(
+                    "{}\\{}",
+                    parent,
+                    name_with_hi_pattern.truecolor(59, 179, 140)
+                ))
+            }
+            None => {}
+        }
+    }
+}
+
 fn get_search_hits(search_hits: u64) {
-    // for hit in &search_hits {
-    //     let parent = hit
-    //         .parent()
-    //         .unwrap_or_else(|| Path::new(""))
-    //         .to_string_lossy()
-    //         .to_string();
-
-    //     let mut name = String::new();
-    //     if let Some(filename) = hit.file_name() {
-    //         name.push_str(&filename.to_string_lossy().to_string());
-    //         println!("{}\\{}", parent, name.truecolor(59, 179, 140));
-    //     } else {
-    //         // TODO remove? how to handle this error?
-    //         // error!("Unable to get the filename of {}", hit.display());
-    //         println!("{}", hit.display());
-    //     }
-    // }
-
     if search_hits == 0 {
         println!(
             "found {} matches",
