@@ -139,7 +139,8 @@ fn sf() -> Command {
                 .short('d')
                 .long("dir")
                 .help("Search only in directory names for the pattern")
-                .action(ArgAction::SetTrue),
+                .action(ArgAction::SetTrue)
+                .conflicts_with("file"),
         )
         .arg(
             Arg::new("extension")
@@ -152,6 +153,7 @@ fn sf() -> Command {
                     "Must be provided after the pattern and the search path"
                 ))
                 .action(ArgAction::Set)
+                .conflicts_with("dir")
                 .num_args(1..)
                 .value_name("EXTENSIONS"),
         )
