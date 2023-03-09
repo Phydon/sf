@@ -124,7 +124,7 @@ fn sf() -> Command {
         // TODO add more
         .long_about(format!("{}", "Simple file search",))
         // TODO update version
-        .version("1.0.2")
+        .version("1.0.3")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -180,8 +180,7 @@ fn sf() -> Command {
             Arg::new("hidden")
                 .short('H')
                 .long("hidden")
-                // .visible_alias("all")
-                .help("Include hidden files in search")
+                .help("Include hidden files and directories in search")
                 .action(ArgAction::SetTrue),
         )
         .arg(
