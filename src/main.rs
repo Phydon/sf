@@ -9,6 +9,7 @@ use log::{error, warn};
 
 use std::{
     env, fs, io,
+    os::windows::prelude::MetadataExt,
     path::{Path, PathBuf},
     process,
     time::{Duration, Instant},
@@ -51,6 +52,7 @@ fn main() {
     let matches = sf().get_matches();
     let file_flag = matches.get_flag("file");
     let dir_flag = matches.get_flag("dir");
+    let hidden_flag = matches.get_flag("hidden");
     let performance_flag = matches.get_flag("performance");
     let stats_flag = matches.get_flag("stats");
     if let Some(args) = matches
@@ -83,6 +85,7 @@ fn main() {
             &extensions,
             file_flag,
             dir_flag,
+            hidden_flag,
             performance_flag,
             stats_flag,
         );
@@ -174,6 +177,14 @@ fn sf() -> Command {
                 .action(ArgAction::SetTrue),
         )
         .arg(
+            Arg::new("hidden")
+                .short('H')
+                .long("hidden")
+                // .visible_alias("all")
+                .help("Include hidden files in search")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             Arg::new("performance")
                 .short('p')
                 .long("performance")
@@ -213,6 +224,7 @@ fn search(
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
+    hidden_flag: bool,
     performace_flag: bool,
     stats_flag: bool,
 ) {
@@ -227,6 +239,7 @@ fn search(
             &extensions,
             file_flag,
             dir_flag,
+            hidden_flag,
             performace_flag,
             &mut search_hits,
             None,
@@ -244,6 +257,7 @@ fn search(
             &extensions,
             file_flag,
             dir_flag,
+            hidden_flag,
             performace_flag,
             &mut search_hits,
             Some(pb.clone()),
@@ -269,6 +283,7 @@ fn forwards_search_and_catch_errors(
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
+    hidden_flag: bool,
     performance_flag: bool,
     search_hits: &mut u64,
     pb: Option<ProgressBar>,
@@ -280,6 +295,7 @@ fn forwards_search_and_catch_errors(
         &extensions,
         file_flag,
         dir_flag,
+        hidden_flag,
         performance_flag,
         search_hits,
         pb.clone(),
@@ -314,6 +330,7 @@ fn forwards_search(
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
+    hidden_flag: bool,
     performance_flag: bool,
     search_hits: &mut u64,
     pb: Option<ProgressBar>,
@@ -347,6 +364,7 @@ fn forwards_search(
                 &extensions,
                 file_flag,
                 dir_flag,
+                hidden_flag,
                 performance_flag,
                 search_hits,
                 pb.clone(),
@@ -372,6 +390,10 @@ fn forwards_search(
                     }
                 }
             };
+        }
+
+        if !hidden_flag && is_hidden(&entry.path())? {
+            continue;
         }
 
         if file_flag && !entry.path().is_file() {
@@ -520,6 +542,17 @@ fn highlight_pattern_in_name(name: &str, pattern: &str) -> String {
         result.push_str(last_from_name);
 
         result.to_string()
+    }
+}
+
+fn is_hidden(file_path: &PathBuf) -> std::io::Result<bool> {
+    let metadata = fs::metadata(file_path)?;
+    let attributes = metadata.file_attributes();
+
+    if (attributes & 0x2) > 0 {
+        Ok(true)
+    } else {
+        Ok(false)
     }
 }
 
