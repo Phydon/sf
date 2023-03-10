@@ -137,7 +137,7 @@ fn sf() -> Command {
             "- accepts \'.\' as current directory"
         ))
         // TODO update version
-        .version("1.0.4")
+        .version("1.0.5")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
