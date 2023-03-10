@@ -55,6 +55,7 @@ fn main() {
     let hidden_flag = matches.get_flag("hidden");
     let performance_flag = matches.get_flag("performance");
     let stats_flag = matches.get_flag("stats");
+    let count_flag = matches.get_flag("count");
     if let Some(args) = matches
         .get_many::<String>("args")
         .map(|a| a.collect::<Vec<_>>())
@@ -88,6 +89,7 @@ fn main() {
             hidden_flag,
             performance_flag,
             stats_flag,
+            count_flag,
         );
     } else {
         match matches.subcommand() {
@@ -144,6 +146,14 @@ fn sf() -> Command {
                 .action(ArgAction::Set)
                 .num_args(2)
                 .value_names(["PATTERN", "PATH"]),
+        )
+        .arg(
+            Arg::new("count")
+                .short('c')
+                .long("count")
+                .help("Only print the number of search results")
+                .action(ArgAction::SetTrue)
+                .conflicts_with("stats"),
         )
         .arg(
             Arg::new("dir")
@@ -239,6 +249,7 @@ fn search(
     hidden_flag: bool,
     performace_flag: bool,
     stats_flag: bool,
+    count_flag: bool,
 ) {
     let start = Instant::now();
     let mut search_hits = 0;
@@ -253,6 +264,7 @@ fn search(
             dir_flag,
             hidden_flag,
             performace_flag,
+            count_flag,
             &mut search_hits,
             None,
         );
@@ -271,20 +283,15 @@ fn search(
             dir_flag,
             hidden_flag,
             performace_flag,
+            count_flag,
             &mut search_hits,
             Some(pb.clone()),
         );
         pb.finish_and_clear();
     }
 
-    if stats_flag {
-        get_search_hits(search_hits);
-        println!(
-            "{}",
-            HumanDuration(start.elapsed())
-                .to_string()
-                .truecolor(112, 110, 255)
-        );
+    if stats_flag || count_flag {
+        get_search_hits(search_hits, count_flag, start);
     }
 }
 
@@ -297,6 +304,7 @@ fn forwards_search_and_catch_errors(
     dir_flag: bool,
     hidden_flag: bool,
     performance_flag: bool,
+    count_flag: bool,
     search_hits: &mut u64,
     pb: Option<ProgressBar>,
 ) {
@@ -309,6 +317,7 @@ fn forwards_search_and_catch_errors(
         dir_flag,
         hidden_flag,
         performance_flag,
+        count_flag,
         search_hits,
         pb.clone(),
     ) {
@@ -344,6 +353,7 @@ fn forwards_search(
     dir_flag: bool,
     hidden_flag: bool,
     performance_flag: bool,
+    count_flag: bool,
     search_hits: &mut u64,
     pb: Option<ProgressBar>,
 ) -> io::Result<()> {
@@ -378,6 +388,7 @@ fn forwards_search(
                 dir_flag,
                 hidden_flag,
                 performance_flag,
+                count_flag,
                 search_hits,
                 pb.clone(),
             ) {
@@ -445,6 +456,7 @@ fn forwards_search(
                             exclude_patterns,
                             search_hits,
                             performance_flag,
+                            count_flag,
                         );
                     }
                 }
@@ -460,6 +472,7 @@ fn forwards_search(
                 exclude_patterns,
                 search_hits,
                 performance_flag,
+                count_flag,
             );
         }
     }
@@ -475,12 +488,15 @@ fn match_pattern_and_print(
     exclude_patterns: &Vec<&String>,
     search_hits: &mut u64,
     performance_flag: bool,
+    count_flag: bool,
 ) {
     if exclude_patterns.is_empty() {
         if name.contains(pattern) || name.to_lowercase().contains(pattern) {
             *search_hits += 1;
 
-            print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
+            if !count_flag {
+                print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
+            }
         }
     } else {
         if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it))
@@ -491,7 +507,9 @@ fn match_pattern_and_print(
         {
             *search_hits += 1;
 
-            print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
+            if !count_flag {
+                print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
+            }
         }
     }
 }
@@ -520,22 +538,34 @@ fn print_search_hit(
     }
 }
 
-fn get_search_hits(search_hits: u64) {
-    if search_hits == 0 {
-        println!(
-            "found {} matches",
-            search_hits.to_string().truecolor(250, 0, 104).bold()
-        );
-    } else if search_hits == 1 {
-        println!(
-            "\nfound {} match",
-            search_hits.to_string().truecolor(59, 179, 140).bold()
-        );
-    } else {
-        println!(
-            "\nfound {} matches",
-            search_hits.to_string().truecolor(59, 179, 140).bold()
-        );
+fn get_search_hits(search_hits: u64, count_flag: bool, start: Instant) {
+    match count_flag {
+        true => println!("{}", search_hits.to_string().bold().truecolor(59, 179, 140)),
+        false => {
+            if search_hits == 0 {
+                println!(
+                    "found {} matches",
+                    search_hits.to_string().truecolor(250, 0, 104).bold()
+                );
+            } else if search_hits == 1 {
+                println!(
+                    "\nfound {} match",
+                    search_hits.to_string().truecolor(59, 179, 140).bold()
+                );
+            } else {
+                println!(
+                    "\nfound {} matches",
+                    search_hits.to_string().truecolor(59, 179, 140).bold()
+                );
+            }
+
+            println!(
+                "{}",
+                HumanDuration(start.elapsed())
+                    .to_string()
+                    .truecolor(112, 110, 255)
+            );
+        }
     }
 }
 
