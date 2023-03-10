@@ -335,7 +335,7 @@ fn forwards_search_and_catch_errors(
             _ => {
                 error!(
                     "Error while scanning entries for {} in \'{}\': {}",
-                    pattern,
+                    pattern.italic(),
                     path.display(),
                     err
                 );
@@ -406,7 +406,7 @@ fn forwards_search(
                     _ => {
                         error!(
                             "Error while scanning entries for {} in \'{}\': {}",
-                            pattern,
+                            pattern.italic(),
                             path.display(),
                             err
                         );
