@@ -16,6 +16,8 @@ __Simple Find__
   * via ```--hidden``` flag
 * show number of search results and search time
   * via ```--stats``` flag
+* only show number of search results 
+  * via ```--count``` flag
 * accepts ```.``` as current directory
 
 ## Example
@@ -47,6 +49,7 @@ Arguments:
   [PATTERN] [PATH]  Add a search pattern and a path
 
 Options:
+  -c, --count                      Only print the number of search results
   -d, --dir                        Search only in directory names for the pattern
   -e, --extension <EXTENSIONS>...  Only search in files with the given extensions
   -E, --exclude <PATTERNS>...      Enter patterns to exclude from the search
