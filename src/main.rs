@@ -50,12 +50,23 @@ fn main() {
 
     // handle arguments
     let matches = sf().get_matches();
-    let file_flag = matches.get_flag("file");
-    let dir_flag = matches.get_flag("dir");
-    let hidden_flag = matches.get_flag("hidden");
-    let performance_flag = matches.get_flag("performance");
-    let stats_flag = matches.get_flag("stats");
-    let count_flag = matches.get_flag("count");
+    let mut file_flag = matches.get_flag("file");
+    let mut dir_flag = matches.get_flag("dir");
+    let mut hidden_flag = matches.get_flag("hidden");
+    let mut performance_flag = matches.get_flag("performance");
+    let mut stats_flag = matches.get_flag("stats");
+    let mut count_flag = matches.get_flag("count");
+    let override_flag = matches.get_flag("override");
+
+    if override_flag {
+        file_flag = false;
+        dir_flag = false;
+        hidden_flag = false;
+        performance_flag = false;
+        stats_flag = false;
+        count_flag = false;
+    }
+
     if let Some(args) = matches
         .get_many::<String>("args")
         .map(|a| a.collect::<Vec<_>>())
@@ -137,7 +148,7 @@ fn sf() -> Command {
             "- accepts \'.\' as current directory"
         ))
         // TODO update version
-        .version("1.0.6")
+        .version("1.0.7")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -204,6 +215,21 @@ fn sf() -> Command {
                 .short('H')
                 .long("hidden")
                 .help("Include hidden files and directories in search")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("override")
+                .short('o')
+                .long("override")
+                .help("Override all previously set flags")
+                .long_help(format!(
+                    "{}\n{}\n{}",
+                    "Override all previously set flags",
+                    "This is usually used when a custom alias for this command is set together with regularly used flags",
+                    "This flag allows to disable these flags and specify new ones"
+                ))
+                // TODO if new args -> add here to this list to override if needed
+                .overrides_with_all(["stats", "file", "dir", "extension", "exclude", "hidden", "performance", "count"])
                 .action(ArgAction::SetTrue),
         )
         .arg(

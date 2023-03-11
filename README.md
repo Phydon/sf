@@ -14,7 +14,7 @@ __Simple Find__
   * via ```--exclude``` flag
 * include hidden files
   * via ```--hidden``` flag
-* show number of search results and search time
+* show number of searched entries, search results and search time
   * via ```--stats``` flag
 * only show number of search results 
   * via ```--count``` flag
@@ -30,10 +30,25 @@ __Simple Find__
 
 ![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_s_done.png)
 
+- search all *rust* files in a specified directory, include hidden files and show stats at the end
+
+```sf "" ~\main\Rust\up\ -e rs -sH```
+
+![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_path_ers_sH_done.png)
+
+- search only files containing the word *test*, exclude results containing the words *json* or *py* or *bin*
+
+```sf test ~\main\Rust\sf -fs -E json py bin```
+
+![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_test_path_fs_Ejsonpybin_done.png)
 
 - you can use ```sf``` to list all files and sub-directories recursively via ```""``` as an empty search pattern 
 
 ```sf "" .```
+
+- count all entries in the current directory and disable the search indicating spinner
+
+```sf "" . -cp```
 
 	
 ## Usage
@@ -55,6 +70,7 @@ Options:
   -E, --exclude <PATTERNS>...      Enter patterns to exclude from the search
   -f, --file                       Search only in file names for the pattern
   -H, --hidden                     Include hidden files and directories in search
+  -o, --override                   Override all previously set flags
   -p, --performance                Disable everything that slows down the search
   -s, --stats                      Show the number of search results at the end
   -h, --help                       Print help (see more with '--help')
