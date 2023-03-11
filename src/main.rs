@@ -137,7 +137,7 @@ fn sf() -> Command {
             "- accepts \'.\' as current directory"
         ))
         // TODO update version
-        .version("1.0.5")
+        .version("1.0.6")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -252,6 +252,7 @@ fn search(
     count_flag: bool,
 ) {
     let start = Instant::now();
+    let mut entry_count = 0;
     let mut search_hits = 0;
 
     if performace_flag {
@@ -266,6 +267,7 @@ fn search(
             performace_flag,
             count_flag,
             &mut search_hits,
+            &mut entry_count,
             None,
         );
     } else {
@@ -285,13 +287,14 @@ fn search(
             performace_flag,
             count_flag,
             &mut search_hits,
+            &mut entry_count,
             Some(pb.clone()),
         );
         pb.finish_and_clear();
     }
 
     if stats_flag || count_flag {
-        get_search_hits(search_hits, count_flag, start);
+        get_search_hits(search_hits, entry_count, count_flag, start);
     }
 }
 
@@ -306,6 +309,7 @@ fn forwards_search_and_catch_errors(
     performance_flag: bool,
     count_flag: bool,
     search_hits: &mut u64,
+    entry_count: &mut u64,
     pb: Option<ProgressBar>,
 ) {
     if let Err(err) = forwards_search(
@@ -319,6 +323,7 @@ fn forwards_search_and_catch_errors(
         performance_flag,
         count_flag,
         search_hits,
+        entry_count,
         pb.clone(),
     ) {
         match err.kind() {
@@ -355,6 +360,7 @@ fn forwards_search(
     performance_flag: bool,
     count_flag: bool,
     search_hits: &mut u64,
+    entry_count: &mut u64,
     pb: Option<ProgressBar>,
 ) -> io::Result<()> {
     let mut search_path = Path::new(&path).to_path_buf();
@@ -390,6 +396,7 @@ fn forwards_search(
                 performance_flag,
                 count_flag,
                 search_hits,
+                entry_count,
                 pb.clone(),
             ) {
                 match err.kind() {
@@ -426,6 +433,8 @@ fn forwards_search(
         if dir_flag && !entry.path().is_dir() {
             continue;
         }
+
+        *entry_count += 1;
 
         let mut name = String::new();
         if let Some(filename) = entry.path().file_name() {
@@ -538,10 +547,16 @@ fn print_search_hit(
     }
 }
 
-fn get_search_hits(search_hits: u64, count_flag: bool, start: Instant) {
+fn get_search_hits(search_hits: u64, entry_count: u64, count_flag: bool, start: Instant) {
     match count_flag {
-        true => println!("{}", search_hits.to_string().bold().truecolor(59, 179, 140)),
+        true => println!("{}", search_hits.to_string()),
         false => {
+            println!(
+                "\n{} {}",
+                entry_count.to_string().dimmed(),
+                "entries searched".dimmed()
+            );
+
             if search_hits == 0 {
                 println!(
                     "found {} matches",
@@ -549,12 +564,12 @@ fn get_search_hits(search_hits: u64, count_flag: bool, start: Instant) {
                 );
             } else if search_hits == 1 {
                 println!(
-                    "\nfound {} match",
+                    "found {} match",
                     search_hits.to_string().truecolor(59, 179, 140).bold()
                 );
             } else {
                 println!(
-                    "\nfound {} matches",
+                    "found {} matches",
                     search_hits.to_string().truecolor(59, 179, 140).bold()
                 );
             }
