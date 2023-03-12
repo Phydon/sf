@@ -1,4 +1,4 @@
-// use aho_corasick::AhoCorasick;
+use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use clap::{Arg, ArgAction, Command};
 use colored::*;
 use flexi_logger::{detailed_format, Duplicate, FileSpec, Logger};
@@ -55,6 +55,7 @@ fn main() {
     let mut performance_flag = matches.get_flag("performance");
     let mut stats_flag = matches.get_flag("stats");
     let mut count_flag = matches.get_flag("count");
+    let mut case_insensitive_flag = matches.get_flag("case-insensitive");
     let override_flag = matches.get_flag("override");
 
     let mut depth_flag = 250;
@@ -76,13 +77,18 @@ fn main() {
         stats_flag = false;
         count_flag = false;
         depth_flag = 250;
+        case_insensitive_flag = false;
     }
 
     if let Some(args) = matches
         .get_many::<String>("args")
         .map(|a| a.collect::<Vec<_>>())
     {
-        let pattern = args[0];
+        let pattern = vec![args[0].as_str()];
+        let ac = AhoCorasickBuilder::new()
+            .ascii_case_insensitive(case_insensitive_flag)
+            .build(&pattern);
+
         let path = Path::new(&args[1]).to_path_buf();
 
         let mut extensions = Vec::new();
@@ -101,10 +107,15 @@ fn main() {
             exclude_patterns.append(&mut excl);
         }
 
+        let ex_ac = AhoCorasickBuilder::new()
+            .ascii_case_insensitive(case_insensitive_flag)
+            .build(&exclude_patterns);
+
         search(
-            pattern,
+            &pattern,
+            ac,
             &path,
-            &exclude_patterns,
+            ex_ac,
             &extensions,
             file_flag,
             dir_flag,
@@ -169,6 +180,13 @@ fn sf() -> Command {
                 .action(ArgAction::Set)
                 .num_args(2)
                 .value_names(["PATTERN", "PATH"]),
+        )
+        .arg(
+            Arg::new("case-insensitive")
+                .short('i')
+                .long("case-insensitive")
+                .help("Search case insensitivly")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("count")
@@ -293,9 +311,10 @@ fn sf() -> Command {
 }
 
 fn search(
-    pattern: &str,
+    pattern: &Vec<&str>,
+    ac: AhoCorasick,
     path: &PathBuf,
-    exclude_patterns: &Vec<&String>,
+    ex_ac: AhoCorasick,
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
@@ -312,8 +331,9 @@ fn search(
     if performace_flag {
         forwards_search_and_catch_errors(
             pattern,
+            ac,
             path,
-            &exclude_patterns,
+            ex_ac,
             &extensions,
             file_flag,
             dir_flag,
@@ -333,8 +353,9 @@ fn search(
         pb.set_message(format!("{}", "searching".truecolor(250, 0, 104)));
         forwards_search_and_catch_errors(
             pattern,
+            ac,
             path,
-            &exclude_patterns,
+            ex_ac,
             &extensions,
             file_flag,
             dir_flag,
@@ -355,9 +376,10 @@ fn search(
 }
 
 fn forwards_search_and_catch_errors(
-    pattern: &str,
+    pattern: &Vec<&str>,
+    ac: AhoCorasick,
     path: &PathBuf,
-    exclude_patterns: &Vec<&String>,
+    ex_ac: AhoCorasick,
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
@@ -371,8 +393,9 @@ fn forwards_search_and_catch_errors(
 ) {
     if let Err(err) = forwards_search(
         pattern,
+        ac,
         path,
-        &exclude_patterns,
+        ex_ac,
         &extensions,
         file_flag,
         dir_flag,
@@ -398,7 +421,7 @@ fn forwards_search_and_catch_errors(
             _ => {
                 error!(
                     "Error while scanning entries for {} in \'{}\': {}",
-                    pattern.italic(),
+                    pattern[0].italic(),
                     path.display(),
                     err
                 );
@@ -408,9 +431,10 @@ fn forwards_search_and_catch_errors(
 }
 
 fn forwards_search(
-    pattern: &str,
+    pattern: &Vec<&str>,
+    ac: AhoCorasick,
     path: &PathBuf,
-    exclude_patterns: &Vec<&String>,
+    ex_ac: AhoCorasick,
     extensions: &Vec<&String>,
     file_flag: bool,
     dir_flag: bool,
@@ -438,52 +462,6 @@ fn forwards_search(
         if entry.path().is_symlink() {
             continue;
         }
-
-        // TODO remove this
-        // if !not_recursive_flag {
-        //     if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
-        //         let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
-        //         entry_path.push_str("\\");
-        //         let path = Path::new(&entry_path);
-
-        //         if let Err(err) = forwards_search(
-        //             pattern,
-        //             &path.to_path_buf(),
-        //             &exclude_patterns,
-        //             &extensions,
-        //             file_flag,
-        //             dir_flag,
-        //             hidden_flag,
-        //             performance_flag,
-        //             count_flag,
-        //             not_recursive_flag,
-        //             search_hits,
-        //             entry_count,
-        //             pb.clone(),
-        //         ) {
-        //             match err.kind() {
-        //                 io::ErrorKind::NotFound => {
-        //                     warn!("\'{}\' not found: {}", path.display(), err);
-        //                 }
-        //                 io::ErrorKind::PermissionDenied => {
-        //                     warn!(
-        //                         "You don`t have access to a source in \'{}\': {}",
-        //                         path.display(),
-        //                         err
-        //                     );
-        //                 }
-        //                 _ => {
-        //                     error!(
-        //                         "Error while scanning entries for {} in \'{}\': {}",
-        //                         pattern.italic(),
-        //                         path.display(),
-        //                         err
-        //                     );
-        //                 }
-        //             }
-        //         };
-        //     }
-        // }
 
         // TODO replace with WalkDir.into_iter().filter_entry()
         if !hidden_flag && is_hidden(&entry.path().to_path_buf())? {
@@ -527,8 +505,9 @@ fn forwards_search(
                             name,
                             parent,
                             pattern,
+                            &ac,
                             pb.clone(),
-                            exclude_patterns,
+                            &ex_ac,
                             search_hits,
                             performance_flag,
                             count_flag,
@@ -543,8 +522,9 @@ fn forwards_search(
                 name,
                 parent,
                 pattern,
+                &ac,
                 pb.clone(),
-                exclude_patterns,
+                &ex_ac,
                 search_hits,
                 performance_flag,
                 count_flag,
@@ -558,33 +538,19 @@ fn forwards_search(
 fn match_pattern_and_print(
     name: String,
     parent: String,
-    pattern: &str,
+    pattern: &Vec<&str>,
+    ac: &AhoCorasick,
     pb: Option<ProgressBar>,
-    exclude_patterns: &Vec<&String>,
+    ex_ac: &AhoCorasick,
     search_hits: &mut u64,
     performance_flag: bool,
     count_flag: bool,
 ) {
-    if exclude_patterns.is_empty() {
-        if name.contains(pattern) || name.to_lowercase().contains(pattern) {
-            *search_hits += 1;
+    if ac.is_match(&name) && !ex_ac.is_match(&name) {
+        *search_hits += 1;
 
-            if !count_flag {
-                print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
-            }
-        }
-    } else {
-        if name.contains(pattern) && exclude_patterns.iter().all(|&it| !name.contains(it))
-            || name.to_lowercase().contains(pattern)
-                && exclude_patterns
-                    .iter()
-                    .all(|&it| !name.to_lowercase().contains(it.to_lowercase().as_str()))
-        {
-            *search_hits += 1;
-
-            if !count_flag {
-                print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
-            }
+        if !count_flag {
+            print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
         }
     }
 }
@@ -592,7 +558,7 @@ fn match_pattern_and_print(
 fn print_search_hit(
     name: String,
     parent: String,
-    pattern: &str,
+    pattern: &Vec<&str>,
     pb: Option<ProgressBar>,
     performance_flag: bool,
 ) {
@@ -650,15 +616,15 @@ fn get_search_hits(search_hits: u64, entry_count: u64, count_flag: bool, start: 
     }
 }
 
-fn highlight_pattern_in_name(name: &str, pattern: &str) -> String {
-    let pat_in_name = name.find(pattern).unwrap_or_else(|| 9999999999);
+fn highlight_pattern_in_name(name: &str, pattern: &Vec<&str>) -> String {
+    let pat_in_name = name.find(pattern[0]).unwrap_or_else(|| 9999999999);
 
     if pat_in_name == 9999999999 {
         return name.to_string();
     } else {
         let first_from_name = &name[..pat_in_name];
         let last_from_name = &name[(pat_in_name + pattern.len())..];
-        let highlighted_pattern = pattern.truecolor(112, 110, 255).to_string();
+        let highlighted_pattern = pattern[0].truecolor(112, 110, 255).to_string();
 
         let mut result = String::from(first_from_name);
         result.push_str(&highlighted_pattern);
