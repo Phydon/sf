@@ -4,8 +4,6 @@ __Simple Find__
 
 *simple file search*
 
-* smart-case by default
-* no regex search (for now)
 * colourful output and search indicating spinner by default 
   * disable via ```--performance``` flag
 * filter by file, directory and file-extension
@@ -18,7 +16,12 @@ __Simple Find__
   * via ```--stats``` flag
 * only show number of search results 
   * via ```--count``` flag
+* search case-insensitivly
+  * via ```--case-insensitive``` flag
+* set maximum search depth
+  * via ```--depth``` flag
 * accepts ```.``` as current directory
+* no regex search (for now)
 
 ## Example
 
