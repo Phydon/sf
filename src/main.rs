@@ -1,11 +1,10 @@
-// TODO limit recursion???
-#![recursion_limit = "250"]
-
+// use aho_corasick::AhoCorasick;
 use clap::{Arg, ArgAction, Command};
 use colored::*;
 use flexi_logger::{detailed_format, Duplicate, FileSpec, Logger};
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use log::{error, warn};
+use walkdir::WalkDir;
 
 use std::{
     env, fs, io,
@@ -56,8 +55,18 @@ fn main() {
     let mut performance_flag = matches.get_flag("performance");
     let mut stats_flag = matches.get_flag("stats");
     let mut count_flag = matches.get_flag("count");
-    let mut not_recursive_flag = matches.get_flag("not-recursive");
     let override_flag = matches.get_flag("override");
+
+    let mut depth_flag = 250;
+    if let Some(d) = matches.get_one::<String>("depth") {
+        match d.parse() {
+            Ok(depth) => depth_flag = depth,
+            Err(err) => {
+                error!("Expected an integer for the search depth: {err}");
+                process::exit(1);
+            }
+        }
+    }
 
     if override_flag {
         file_flag = false;
@@ -66,7 +75,7 @@ fn main() {
         performance_flag = false;
         stats_flag = false;
         count_flag = false;
-        not_recursive_flag = false;
+        depth_flag = 250;
     }
 
     if let Some(args) = matches
@@ -103,7 +112,7 @@ fn main() {
             performance_flag,
             stats_flag,
             count_flag,
-            not_recursive_flag,
+            depth_flag,
         );
     } else {
         match matches.subcommand() {
@@ -151,7 +160,7 @@ fn sf() -> Command {
             "- accepts \'.\' as current directory"
         ))
         // TODO update version
-        .version("1.1.0")
+        .version("1.2.0")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -168,6 +177,21 @@ fn sf() -> Command {
                 .help("Only print the number of search results")
                 .action(ArgAction::SetTrue)
                 .conflicts_with("stats"),
+        )
+        .arg(
+            Arg::new("depth")
+                .short('D')
+                .long("depth")
+                .help("Set max search depth")
+                .long_help(format!(
+                    "{}\n{}",
+                    "Set max search depth",
+                    "Default is 250",
+                ))
+                .default_value("250")
+                .action(ArgAction::Set)
+                .num_args(1)
+                .value_name("NUMBER"),
         )
         .arg(
             Arg::new("dir")
@@ -218,13 +242,6 @@ fn sf() -> Command {
                 .short('H')
                 .long("hidden")
                 .help("Include hidden files and directories in search")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("not-recursive")
-                .short('r')
-                .long("not-recursive")
-                .help("Don`t go recursively into directories")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -286,7 +303,7 @@ fn search(
     performace_flag: bool,
     stats_flag: bool,
     count_flag: bool,
-    not_recursive_flag: bool,
+    depth_flag: u32,
 ) {
     let start = Instant::now();
     let mut entry_count = 0;
@@ -303,7 +320,7 @@ fn search(
             hidden_flag,
             performace_flag,
             count_flag,
-            not_recursive_flag,
+            depth_flag,
             &mut search_hits,
             &mut entry_count,
             None,
@@ -324,7 +341,7 @@ fn search(
             hidden_flag,
             performace_flag,
             count_flag,
-            not_recursive_flag,
+            depth_flag,
             &mut search_hits,
             &mut entry_count,
             Some(pb.clone()),
@@ -347,7 +364,7 @@ fn forwards_search_and_catch_errors(
     hidden_flag: bool,
     performance_flag: bool,
     count_flag: bool,
-    not_recursive_flag: bool,
+    depth_flag: u32,
     search_hits: &mut u64,
     entry_count: &mut u64,
     pb: Option<ProgressBar>,
@@ -362,7 +379,7 @@ fn forwards_search_and_catch_errors(
         hidden_flag,
         performance_flag,
         count_flag,
-        not_recursive_flag,
+        depth_flag,
         search_hits,
         entry_count,
         pb.clone(),
@@ -400,7 +417,7 @@ fn forwards_search(
     hidden_flag: bool,
     performance_flag: bool,
     count_flag: bool,
-    not_recursive_flag: bool,
+    depth_flag: u32,
     search_hits: &mut u64,
     entry_count: &mut u64,
     pb: Option<ProgressBar>,
@@ -415,66 +432,70 @@ fn forwards_search(
         search_path.push(current_dir);
     }
 
-    for entry in fs::read_dir(search_path)? {
+    for entry in WalkDir::new(search_path).max_depth(depth_flag as usize) {
         let entry = entry?;
 
         if entry.path().is_symlink() {
             continue;
         }
 
-        if !not_recursive_flag {
-            if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
-                let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
-                entry_path.push_str("\\");
-                let path = Path::new(&entry_path);
+        // TODO remove this
+        // if !not_recursive_flag {
+        //     if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
+        //         let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
+        //         entry_path.push_str("\\");
+        //         let path = Path::new(&entry_path);
 
-                if let Err(err) = forwards_search(
-                    pattern,
-                    &path.to_path_buf(),
-                    &exclude_patterns,
-                    &extensions,
-                    file_flag,
-                    dir_flag,
-                    hidden_flag,
-                    performance_flag,
-                    count_flag,
-                    not_recursive_flag,
-                    search_hits,
-                    entry_count,
-                    pb.clone(),
-                ) {
-                    match err.kind() {
-                        io::ErrorKind::NotFound => {
-                            warn!("\'{}\' not found: {}", path.display(), err);
-                        }
-                        io::ErrorKind::PermissionDenied => {
-                            warn!(
-                                "You don`t have access to a source in \'{}\': {}",
-                                path.display(),
-                                err
-                            );
-                        }
-                        _ => {
-                            error!(
-                                "Error while scanning entries for {} in \'{}\': {}",
-                                pattern.italic(),
-                                path.display(),
-                                err
-                            );
-                        }
-                    }
-                };
-            }
-        }
+        //         if let Err(err) = forwards_search(
+        //             pattern,
+        //             &path.to_path_buf(),
+        //             &exclude_patterns,
+        //             &extensions,
+        //             file_flag,
+        //             dir_flag,
+        //             hidden_flag,
+        //             performance_flag,
+        //             count_flag,
+        //             not_recursive_flag,
+        //             search_hits,
+        //             entry_count,
+        //             pb.clone(),
+        //         ) {
+        //             match err.kind() {
+        //                 io::ErrorKind::NotFound => {
+        //                     warn!("\'{}\' not found: {}", path.display(), err);
+        //                 }
+        //                 io::ErrorKind::PermissionDenied => {
+        //                     warn!(
+        //                         "You don`t have access to a source in \'{}\': {}",
+        //                         path.display(),
+        //                         err
+        //                     );
+        //                 }
+        //                 _ => {
+        //                     error!(
+        //                         "Error while scanning entries for {} in \'{}\': {}",
+        //                         pattern.italic(),
+        //                         path.display(),
+        //                         err
+        //                     );
+        //                 }
+        //             }
+        //         };
+        //     }
+        // }
 
-        if !hidden_flag && is_hidden(&entry.path())? {
+        // TODO replace with WalkDir.into_iter().filter_entry()
+        if !hidden_flag && is_hidden(&entry.path().to_path_buf())? {
             continue;
         }
 
+        // TODO replace with WalkDir.into_iter().filter_entry()
         if file_flag && !entry.path().is_file() {
             continue;
         }
 
+        // TODO replace with WalkDir.into_iter().filter_entry()
         if dir_flag && !entry.path().is_dir() {
             continue;
         }
