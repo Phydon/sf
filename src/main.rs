@@ -623,7 +623,7 @@ fn highlight_pattern_in_name(name: &str, pattern: &Vec<&str>) -> String {
         return name.to_string();
     } else {
         let first_from_name = &name[..pat_in_name];
-        let last_from_name = &name[(pat_in_name + pattern.len())..];
+        let last_from_name = &name[(pat_in_name + pattern[0].len())..];
         let highlighted_pattern = pattern[0].truecolor(112, 110, 255).to_string();
 
         let mut result = String::from(first_from_name);
