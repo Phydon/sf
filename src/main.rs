@@ -56,6 +56,7 @@ fn main() {
     let mut performance_flag = matches.get_flag("performance");
     let mut stats_flag = matches.get_flag("stats");
     let mut count_flag = matches.get_flag("count");
+    let mut not_recursive_flag = matches.get_flag("not-recursive");
     let override_flag = matches.get_flag("override");
 
     if override_flag {
@@ -65,6 +66,7 @@ fn main() {
         performance_flag = false;
         stats_flag = false;
         count_flag = false;
+        not_recursive_flag = false;
     }
 
     if let Some(args) = matches
@@ -101,6 +103,7 @@ fn main() {
             performance_flag,
             stats_flag,
             count_flag,
+            not_recursive_flag,
         );
     } else {
         match matches.subcommand() {
@@ -148,7 +151,7 @@ fn sf() -> Command {
             "- accepts \'.\' as current directory"
         ))
         // TODO update version
-        .version("1.0.7")
+        .version("1.1.0")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -218,6 +221,13 @@ fn sf() -> Command {
                 .action(ArgAction::SetTrue),
         )
         .arg(
+            Arg::new("not-recursive")
+                .short('r')
+                .long("not-recursive")
+                .help("Don`t go recursively into directories")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             Arg::new("override")
                 .short('o')
                 .long("override")
@@ -276,6 +286,7 @@ fn search(
     performace_flag: bool,
     stats_flag: bool,
     count_flag: bool,
+    not_recursive_flag: bool,
 ) {
     let start = Instant::now();
     let mut entry_count = 0;
@@ -292,6 +303,7 @@ fn search(
             hidden_flag,
             performace_flag,
             count_flag,
+            not_recursive_flag,
             &mut search_hits,
             &mut entry_count,
             None,
@@ -312,6 +324,7 @@ fn search(
             hidden_flag,
             performace_flag,
             count_flag,
+            not_recursive_flag,
             &mut search_hits,
             &mut entry_count,
             Some(pb.clone()),
@@ -334,6 +347,7 @@ fn forwards_search_and_catch_errors(
     hidden_flag: bool,
     performance_flag: bool,
     count_flag: bool,
+    not_recursive_flag: bool,
     search_hits: &mut u64,
     entry_count: &mut u64,
     pb: Option<ProgressBar>,
@@ -348,6 +362,7 @@ fn forwards_search_and_catch_errors(
         hidden_flag,
         performance_flag,
         count_flag,
+        not_recursive_flag,
         search_hits,
         entry_count,
         pb.clone(),
@@ -385,6 +400,7 @@ fn forwards_search(
     hidden_flag: bool,
     performance_flag: bool,
     count_flag: bool,
+    not_recursive_flag: bool,
     search_hits: &mut u64,
     entry_count: &mut u64,
     pb: Option<ProgressBar>,
@@ -406,46 +422,49 @@ fn forwards_search(
             continue;
         }
 
-        if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
-            let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
-            entry_path.push_str("\\");
-            let path = Path::new(&entry_path);
+        if !not_recursive_flag {
+            if entry.path().is_dir() && fs::read_dir(entry.path())?.count() != 0 {
+                let mut entry_path = entry.path().as_path().to_string_lossy().to_string();
+                entry_path.push_str("\\");
+                let path = Path::new(&entry_path);
 
-            if let Err(err) = forwards_search(
-                pattern,
-                &path.to_path_buf(),
-                &exclude_patterns,
-                &extensions,
-                file_flag,
-                dir_flag,
-                hidden_flag,
-                performance_flag,
-                count_flag,
-                search_hits,
-                entry_count,
-                pb.clone(),
-            ) {
-                match err.kind() {
-                    io::ErrorKind::NotFound => {
-                        warn!("\'{}\' not found: {}", path.display(), err);
+                if let Err(err) = forwards_search(
+                    pattern,
+                    &path.to_path_buf(),
+                    &exclude_patterns,
+                    &extensions,
+                    file_flag,
+                    dir_flag,
+                    hidden_flag,
+                    performance_flag,
+                    count_flag,
+                    not_recursive_flag,
+                    search_hits,
+                    entry_count,
+                    pb.clone(),
+                ) {
+                    match err.kind() {
+                        io::ErrorKind::NotFound => {
+                            warn!("\'{}\' not found: {}", path.display(), err);
+                        }
+                        io::ErrorKind::PermissionDenied => {
+                            warn!(
+                                "You don`t have access to a source in \'{}\': {}",
+                                path.display(),
+                                err
+                            );
+                        }
+                        _ => {
+                            error!(
+                                "Error while scanning entries for {} in \'{}\': {}",
+                                pattern.italic(),
+                                path.display(),
+                                err
+                            );
+                        }
                     }
-                    io::ErrorKind::PermissionDenied => {
-                        warn!(
-                            "You don`t have access to a source in \'{}\': {}",
-                            path.display(),
-                            err
-                        );
-                    }
-                    _ => {
-                        error!(
-                            "Error while scanning entries for {} in \'{}\': {}",
-                            pattern.italic(),
-                            path.display(),
-                            err
-                        );
-                    }
-                }
-            };
+                };
+            }
         }
 
         if !hidden_flag && is_hidden(&entry.path())? {

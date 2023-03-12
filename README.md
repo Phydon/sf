@@ -70,6 +70,7 @@ Options:
   -E, --exclude <PATTERNS>...      Enter patterns to exclude from the search
   -f, --file                       Search only in file names for the pattern
   -H, --hidden                     Include hidden files and directories in search
+  -r, --not-recursive              Don`t go recursively into directories
   -o, --override                   Override all previously set flags
   -p, --performance                Disable everything that slows down the search
   -s, --stats                      Show the number of search results at the end
