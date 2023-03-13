@@ -4,7 +4,7 @@ use colored::*;
 use flexi_logger::{detailed_format, Duplicate, FileSpec, Logger};
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use log::{error, warn};
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 use std::{
     env, fs, io,
@@ -49,6 +49,7 @@ fn main() {
 
     // handle arguments
     let matches = sf().get_matches();
+    // TODO don`t pass the flags around in every function call
     let mut file_flag = matches.get_flag("file");
     let mut dir_flag = matches.get_flag("dir");
     let mut hidden_flag = matches.get_flag("hidden");
@@ -58,6 +59,7 @@ fn main() {
     let mut case_insensitive_flag = matches.get_flag("case-insensitive");
     let override_flag = matches.get_flag("override");
 
+    // set default search depth
     let mut depth_flag = 250;
     if let Some(d) = matches.get_one::<String>("depth") {
         match d.parse() {
@@ -69,6 +71,7 @@ fn main() {
         }
     }
 
+    // if override flag is set -> reset everything to default values
     if override_flag {
         file_flag = false;
         dir_flag = false;
@@ -84,13 +87,18 @@ fn main() {
         .get_many::<String>("args")
         .map(|a| a.collect::<Vec<_>>())
     {
+        // get search pattern from arguments
         let pattern = vec![args[0].as_str()];
+        // store search pattern in aho-corasick builder
+        // handle case-insensitive flag
         let ac = AhoCorasickBuilder::new()
             .ascii_case_insensitive(case_insensitive_flag)
             .build(&pattern);
 
+        // get search path from arguments
         let path = Path::new(&args[1]).to_path_buf();
 
+        // get possible file extensions for filtering
         let mut extensions = Vec::new();
         if let Some(mut ext) = matches
             .get_many::<String>("extension")
@@ -99,6 +107,7 @@ fn main() {
             extensions.append(&mut ext);
         }
 
+        // get exclude patterns
         let mut exclude_patterns = Vec::new();
         if let Some(mut excl) = matches
             .get_many::<String>("exclude")
@@ -107,10 +116,13 @@ fn main() {
             exclude_patterns.append(&mut excl);
         }
 
+        // store exclude patterns in aho-corasick builder
+        // handle case-insensitive flag for exclude patterns
         let ex_ac = AhoCorasickBuilder::new()
             .ascii_case_insensitive(case_insensitive_flag)
             .build(&exclude_patterns);
 
+        // start search
         search(
             &pattern,
             ac,
@@ -126,6 +138,7 @@ fn main() {
             depth_flag,
         );
     } else {
+        // handle commands
         match matches.subcommand() {
             Some(("log", _)) => {
                 if let Ok(logs) = show_log_file(&config_dir) {
@@ -143,6 +156,7 @@ fn main() {
     }
 }
 
+// build cli
 fn sf() -> Command {
     Command::new("sf")
         .bin_name("sf")
@@ -328,6 +342,7 @@ fn search(
     let mut entry_count = 0;
     let mut search_hits = 0;
 
+    // disable the search indicating spinner and colourful output
     if performace_flag {
         forwards_search_and_catch_errors(
             pattern,
@@ -346,11 +361,13 @@ fn search(
             None,
         );
     } else {
+        // spinner
         let spinner_style = ProgressStyle::with_template("{spinner:.red} {msg}").unwrap();
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(Duration::from_millis(120));
         pb.set_style(spinner_style);
         pb.set_message(format!("{}", "searching".truecolor(250, 0, 104)));
+
         forwards_search_and_catch_errors(
             pattern,
             ac,
@@ -367,9 +384,11 @@ fn search(
             &mut entry_count,
             Some(pb.clone()),
         );
+
         pb.finish_and_clear();
     }
 
+    // print output
     if stats_flag || count_flag {
         get_search_hits(search_hits, entry_count, count_flag, start);
     }
@@ -448,6 +467,7 @@ fn forwards_search(
 ) -> io::Result<()> {
     let mut search_path = Path::new(&path).to_path_buf();
 
+    // accept "." as current directory
     if path.as_path().to_string_lossy().to_string() == "." {
         let current_dir = env::current_dir().unwrap_or_else(|err| {
             error!("Unable to get current directory: {err}");
@@ -456,37 +476,30 @@ fn forwards_search(
         search_path.push(current_dir);
     }
 
-    for entry in WalkDir::new(search_path).max_depth(depth_flag as usize) {
+    // filter files
+    let valid_entries = WalkDir::new(search_path)
+        .max_depth(depth_flag as usize) // set maximum search depth
+        .into_iter()
+        .filter_entry(|e| file_check(e, hidden_flag, dir_flag)); // handle hidden flag and dir flag
+
+    for entry in valid_entries {
         let entry = entry?;
 
-        if entry.path().is_symlink() {
+        // handle file flag
+        // must be outside of function file_check()
+        // else no file will be searched with WalkDir...filter_entry()
+        if file_flag && !entry.file_type().is_file() {
             continue;
         }
 
-        // TODO replace with WalkDir.into_iter().filter_entry()
-        if !hidden_flag && is_hidden(&entry.path().to_path_buf())? {
-            continue;
-        }
-
-        // TODO replace with WalkDir.into_iter().filter_entry()
-        if file_flag && !entry.path().is_file() {
-            continue;
-        }
-
-        // TODO replace with WalkDir.into_iter().filter_entry()
-        if dir_flag && !entry.path().is_dir() {
-            continue;
-        }
-
+        // count seached entries
         *entry_count += 1;
 
+        // get filename
         let mut name = String::new();
-        if let Some(filename) = entry.path().file_name() {
-            name.push_str(&filename.to_string_lossy().to_string());
-        } else {
-            error!("Unable to get the filename of {}", entry.path().display());
-        }
+        name.push_str(&entry.file_name().to_string_lossy().to_string());
 
+        // get parent path
         let parent = entry
             .path()
             .parent()
@@ -494,12 +507,15 @@ fn forwards_search(
             .to_string_lossy()
             .to_string();
 
+        // handle possible file extensions
         if !extensions.is_empty() {
             if entry.path().is_file() {
+                // get entry extension
                 let mut entry_extension = String::new();
                 if let Some(extension) = entry.path().extension() {
                     entry_extension.push_str(&extension.to_string_lossy().to_string());
 
+                    // check if entry_extension matches any given extensions via extensions flag
                     if extensions.iter().any(|&it| &entry_extension == it) {
                         match_pattern_and_print(
                             name,
@@ -546,6 +562,7 @@ fn match_pattern_and_print(
     performance_flag: bool,
     count_flag: bool,
 ) {
+    // check for pattern match in filename via aho-corasick algorithm
     if ac.is_match(&name) && !ex_ac.is_match(&name) {
         *search_hits += 1;
 
@@ -617,13 +634,16 @@ fn get_search_hits(search_hits: u64, entry_count: u64, count_flag: bool, start: 
 }
 
 fn highlight_pattern_in_name(name: &str, pattern: &Vec<&str>) -> String {
+    // find first byte of pattern in filename
     let pat_in_name = name.find(pattern[0]).unwrap_or_else(|| 9999999999);
 
     if pat_in_name == 9999999999 {
+        // if no pattern found return just the filename
         return name.to_string();
     } else {
         let first_from_name = &name[..pat_in_name];
         let last_from_name = &name[(pat_in_name + pattern[0].len())..];
+        // colourize the pattern in the filename
         let highlighted_pattern = pattern[0].truecolor(112, 110, 255).to_string();
 
         let mut result = String::from(first_from_name);
@@ -632,6 +652,25 @@ fn highlight_pattern_in_name(name: &str, pattern: &Vec<&str>) -> String {
 
         result.to_string()
     }
+}
+
+// check entries if hidden, dir or symlink
+// and compare to hidden flag and dir flag
+fn file_check(entry: &DirEntry, hidden_flag: bool, dir_flag: bool) -> bool {
+    // always skip symlinks
+    if entry.file_type().is_symlink() {
+        return false;
+    }
+
+    if !hidden_flag && is_hidden(&entry.path().to_path_buf()).unwrap_or(false) {
+        return false;
+    }
+
+    if dir_flag && !entry.file_type().is_dir() {
+        return false;
+    }
+
+    return true;
 }
 
 fn is_hidden(file_path: &PathBuf) -> std::io::Result<bool> {
