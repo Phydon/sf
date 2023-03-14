@@ -185,7 +185,7 @@ fn sf() -> Command {
             "- accepts \'.\' as current directory"
         ))
         // TODO update version
-        .version("1.3.1")
+        .version("1.3.2")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -278,6 +278,11 @@ fn sf() -> Command {
                 .short('H')
                 .long("hidden")
                 .help("Include hidden files and directories in search")
+                .long_help(format!(
+                    "{}\n{}",
+                    "Include hidden files and directories in search",
+                    "If a directory is hidden all it's contents will be skiped as well",
+                ))
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -491,6 +496,13 @@ fn forwards_search(
     for entry in valid_entries {
         let entry = entry?;
 
+        // always skip symlinks
+        // must be outside of function file_check()
+        // else search stops if symlink is found via WalkDir...filter_entry()
+        if entry.file_type().is_symlink() {
+            continue;
+        }
+
         // handle file flag
         // must be outside of function file_check()
         // else no file will be searched with WalkDir...filter_entry()
@@ -498,7 +510,7 @@ fn forwards_search(
             continue;
         }
 
-        // count seached entries
+        // count searched entries
         *entry_count += 1;
 
         // get filename
@@ -655,14 +667,9 @@ fn highlight_pattern_in_name(name: &str, pattern: &Vec<&str>) -> String {
     }
 }
 
-// check entries if hidden, dir or symlink
+// check entries if hidden or dir
 // and compare to hidden flag and dir flag
 fn file_check(entry: &DirEntry, hidden_flag: bool, dir_flag: bool) -> bool {
-    // always skip symlinks
-    if entry.file_type().is_symlink() {
-        return false;
-    }
-
     if !hidden_flag && is_hidden(&entry.path().to_path_buf()).unwrap_or(false) {
         return false;
     }
