@@ -185,7 +185,7 @@ fn sf() -> Command {
             "- accepts \'.\' as current directory"
         ))
         // TODO update version
-        .version("1.3.0")
+        .version("1.3.1")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -207,8 +207,12 @@ fn sf() -> Command {
                 .short('c')
                 .long("count")
                 .help("Only print the number of search results")
+                .long_help(format!(
+                    "{}\n{}",
+                    "Only print the number of search results",
+                    "Can be combined with the --stats flag to only show stats and no paths",
+                ))
                 .action(ArgAction::SetTrue)
-                .conflicts_with("stats"),
         )
         .arg(
             Arg::new("depth")
@@ -308,11 +312,11 @@ fn sf() -> Command {
             Arg::new("stats")
                 .short('s')
                 .long("stats")
-                .help("Show the number of search results at the end")
+                .help("Show search statistics at the end")
                 .long_help(format!(
                     "{}\n{}",
-                    "Don`t show the number of search results at the end",
-                    "Prints out search results immediately when found"
+                    "Show search statistics at the end",
+                    "Can be combined with the --count flag to only show stats and no paths",
                 ))
                 .action(ArgAction::SetTrue),
         )
@@ -389,8 +393,10 @@ fn search(
     }
 
     // print output
-    if stats_flag || count_flag {
-        get_search_hits(search_hits, entry_count, count_flag, start);
+    if count_flag && !stats_flag {
+        println!("{}", search_hits.to_string());
+    } else if stats_flag {
+        get_search_hits(search_hits, entry_count, start);
     }
 }
 
@@ -596,41 +602,36 @@ fn print_search_hit(
     }
 }
 
-fn get_search_hits(search_hits: u64, entry_count: u64, count_flag: bool, start: Instant) {
-    match count_flag {
-        true => println!("{}", search_hits.to_string()),
-        false => {
-            println!(
-                "\n{} {}",
-                entry_count.to_string().dimmed(),
-                "entries searched".dimmed()
-            );
+fn get_search_hits(search_hits: u64, entry_count: u64, start: Instant) {
+    println!(
+        "\n{} {}",
+        entry_count.to_string().dimmed(),
+        "entries searched".dimmed()
+    );
 
-            if search_hits == 0 {
-                println!(
-                    "found {} matches",
-                    search_hits.to_string().truecolor(250, 0, 104).bold()
-                );
-            } else if search_hits == 1 {
-                println!(
-                    "found {} match",
-                    search_hits.to_string().truecolor(59, 179, 140).bold()
-                );
-            } else {
-                println!(
-                    "found {} matches",
-                    search_hits.to_string().truecolor(59, 179, 140).bold()
-                );
-            }
-
-            println!(
-                "{}",
-                HumanDuration(start.elapsed())
-                    .to_string()
-                    .truecolor(112, 110, 255)
-            );
-        }
+    if search_hits == 0 {
+        println!(
+            "found {} matches",
+            search_hits.to_string().truecolor(250, 0, 104).bold()
+        );
+    } else if search_hits == 1 {
+        println!(
+            "found {} match",
+            search_hits.to_string().truecolor(59, 179, 140).bold()
+        );
+    } else {
+        println!(
+            "found {} matches",
+            search_hits.to_string().truecolor(59, 179, 140).bold()
+        );
     }
+
+    println!(
+        "{}",
+        HumanDuration(start.elapsed())
+            .to_string()
+            .truecolor(112, 110, 255)
+    );
 }
 
 fn highlight_pattern_in_name(name: &str, pattern: &Vec<&str>) -> String {
