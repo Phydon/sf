@@ -157,7 +157,7 @@ fn main() {
         }
 
         // store extensions in aho-corasick builder
-        // handle case-insensitive flag for exclude patterns
+        // handle case-insensitive flag for extensions
         let extensions_ac = AhoCorasickBuilder::new()
             .ascii_case_insensitive(case_insensitive_flag)
             .build(&extensions);
@@ -525,6 +525,9 @@ fn forwards_search(
                     if config.extension_ac.is_match(&entry_extension) {
                         match_pattern_and_print(name, parent, &config, pb.clone(), search_hits);
                     }
+                    // TODO is this really faster than
+                    // if extensions.iter().any(|&it| &entry_extension == it) {...}
+                    // -> with extensions stored in a Vec
                 }
             } else {
                 continue;
