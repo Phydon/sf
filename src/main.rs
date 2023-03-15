@@ -17,7 +17,7 @@ use std::{
 struct Config {
     file_flag: bool,
     dir_flag: bool,
-    hidden_flag: bool,
+    no_hidden_flag: bool,
     performance_flag: bool,
     stats_flag: bool,
     count_flag: bool,
@@ -33,7 +33,7 @@ impl Config {
     fn new(
         file_flag: bool,
         dir_flag: bool,
-        hidden_flag: bool,
+        no_hidden_flag: bool,
         performance_flag: bool,
         stats_flag: bool,
         count_flag: bool,
@@ -50,7 +50,7 @@ impl Config {
         Self {
             file_flag,
             dir_flag,
-            hidden_flag,
+            no_hidden_flag,
             performance_flag,
             stats_flag,
             count_flag,
@@ -101,7 +101,7 @@ fn main() {
     let matches = sf().get_matches();
     let mut file_flag = matches.get_flag("file");
     let mut dir_flag = matches.get_flag("dir");
-    let mut hidden_flag = matches.get_flag("hidden");
+    let mut no_hidden_flag = matches.get_flag("no-hidden");
     let mut performance_flag = matches.get_flag("performance");
     let mut stats_flag = matches.get_flag("stats");
     let mut count_flag = matches.get_flag("count");
@@ -124,7 +124,7 @@ fn main() {
     if override_flag {
         file_flag = false;
         dir_flag = false;
-        hidden_flag = false;
+        no_hidden_flag = false;
         performance_flag = false;
         stats_flag = false;
         count_flag = false;
@@ -181,7 +181,7 @@ fn main() {
         let config = Config::new(
             file_flag,
             dir_flag,
-            hidden_flag,
+            no_hidden_flag,
             performance_flag,
             stats_flag,
             count_flag,
@@ -230,20 +230,20 @@ fn sf() -> Command {
             "Leann Phydon <leann.phydon@gmail.com>".italic().dimmed()
         ))
         .long_about(format!(
-            "{}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}",
+            "{}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}\n  {}\n\n{}",
             "Simple file search",
-            "- smart-case by default",
-            "- no regex search",
             "- colourful output and search indicating spinner by default ",
             "- filter by file, directory and file-extension",
-            "- ignores symlinks",
             "- exclude patterns from the search ",
-            "- include hidden files",
-            "- show number of search results and search time",
-            "- accepts \'.\' as current directory"
+            "- exclude hidden files",
+            "- show search statistics at the end",
+            "- accepts \'.\' as current directory",
+            "- search case insensitive",
+            "- no regex search",
+            "Note: every set filter slows down the search".truecolor(250, 0, 104)
         ))
         // TODO update version
-        .version("1.4.2")
+        .version("1.4.3")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -268,7 +268,7 @@ fn sf() -> Command {
                 .long_help(format!(
                     "{}\n{}",
                     "Only print the number of search results",
-                    "Can be combined with the --stats flag to only show stats and no paths",
+                    "Can be combined with the --stats flag to only show stats and no other output",
                 ))
                 .action(ArgAction::SetTrue)
         )
@@ -278,9 +278,8 @@ fn sf() -> Command {
                 .long("depth")
                 .help("Set max search depth")
                 .long_help(format!(
-                    "{}\n{}",
+                    "{}",
                     "Set max search depth",
-                    "Default is 250",
                 ))
                 .default_value("250")
                 .action(ArgAction::Set)
@@ -332,14 +331,14 @@ fn sf() -> Command {
                 .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("hidden")
+            Arg::new("no-hidden")
                 .short('H')
-                .long("hidden")
-                .help("Include hidden files and directories in search")
+                .long("no-hidden")
+                .help("Exclude hidden files and directories from search")
                 .long_help(format!(
                     "{}\n{}",
-                    "Include hidden files and directories in search",
-                    "If a directory is hidden all it's contents will be skiped as well",
+                    "Exclude hidden files and directories from search",
+                    "If a directory is hidden all its content will be skiped as well",
                 ))
                 .action(ArgAction::SetTrue),
         )
@@ -351,23 +350,23 @@ fn sf() -> Command {
                 .long_help(format!(
                     "{}\n{}\n{}",
                     "Override all previously set flags",
-                    "This is usually used when a custom alias for this command is set together with regularly used flags",
+                    "This can be used when a custom alias for this command is set together with regularly used flags",
                     "This flag allows to disable these flags and specify new ones"
                 ))
                 // TODO if new args -> add here to this list to override if needed
-                .overrides_with_all(["stats", "file", "dir", "extension", "exclude", "hidden", "performance", "count"])
+                .overrides_with_all(["stats", "file", "dir", "extension", "exclude", "no-hidden", "performance", "count"])
                 .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("performance")
                 .short('p')
                 .long("performance")
-                .help("Disable everything that slows down the search")
+                .help("Disable spinner and don`t colourize the search output")
                 .long_help(format!(
                     "{}\n{}\n{}",
                     "Focus on performance",
-                    "Disable everything that slows down the search",
-                    "Only significant with larger searches"
+                    "Disable search indicating spinner and don`t colourize the search output",
+                    "Only significant in larger searches"
                 ))
                 .action(ArgAction::SetTrue),
         )
@@ -379,7 +378,7 @@ fn sf() -> Command {
                 .long_help(format!(
                     "{}\n{}",
                     "Show search statistics at the end",
-                    "Can be combined with the --count flag to only show stats and no paths",
+                    "Can be combined with the --count flag to only show stats and no other output",
                 ))
                 .action(ArgAction::SetTrue),
         )
@@ -479,17 +478,11 @@ fn forwards_search(
     let valid_entries = WalkDir::new(search_path)
         .max_depth(config.depth_flag as usize) // set maximum search depth
         .into_iter()
+        // TODO bottleneck if it has to filter out hidden files
         .filter_entry(|e| file_check(e, &config)); // handle hidden flag and dir flag
 
     for entry in valid_entries {
         let entry = entry?;
-
-        // always skip symlinks
-        // must be outside of function file_check()
-        // else search stops if symlink is found via WalkDir...filter_entry()
-        if entry.file_type().is_symlink() {
-            continue;
-        }
 
         // handle file flag
         // must be outside of function file_check()
@@ -498,6 +491,9 @@ fn forwards_search(
             continue;
         }
 
+        // handle dir flag
+        // must be outside of function file_check()
+        // else search stops if dir is found via WalkDir...filter_entry()
         if config.dir_flag && !entry.file_type().is_dir() {
             continue;
         }
@@ -630,13 +626,15 @@ fn highlight_pattern_in_name(name: &str, config: &Config) -> String {
 
 // check entries if hidden and compare to hidden flag
 fn file_check(entry: &DirEntry, config: &Config) -> bool {
-    if !config.hidden_flag && is_hidden(&entry.path().to_path_buf()).unwrap_or(false) {
+    // TODO bottleneck
+    if config.no_hidden_flag && is_hidden(&entry.path().to_path_buf()).unwrap_or(false) {
         return false;
     }
 
     return true;
 }
 
+// TODO bottleneck
 fn is_hidden(file_path: &PathBuf) -> std::io::Result<bool> {
     let metadata = fs::metadata(file_path)?;
     let attributes = metadata.file_attributes();
