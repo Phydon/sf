@@ -498,6 +498,10 @@ fn forwards_search(
             continue;
         }
 
+        if config.dir_flag && !entry.file_type().is_dir() {
+            continue;
+        }
+
         // count searched entries
         *entry_count += 1;
 
@@ -628,14 +632,9 @@ fn highlight_pattern_in_name(name: &str, config: &Config) -> String {
     }
 }
 
-// check entries if hidden or dir
-// and compare to hidden flag and dir flag
+// check entries if hidden and compare to hidden flag
 fn file_check(entry: &DirEntry, config: &Config) -> bool {
     if !config.hidden_flag && is_hidden(&entry.path().to_path_buf()).unwrap_or(false) {
-        return false;
-    }
-
-    if config.dir_flag && !entry.file_type().is_dir() {
         return false;
     }
 
