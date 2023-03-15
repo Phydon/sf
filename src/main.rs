@@ -14,6 +14,56 @@ use std::{
     time::{Duration, Instant},
 };
 
+struct Config {
+    file_flag: bool,
+    dir_flag: bool,
+    hidden_flag: bool,
+    performance_flag: bool,
+    stats_flag: bool,
+    count_flag: bool,
+    depth_flag: u32,
+    pattern: String,
+    pattern_ac: AhoCorasick,
+    extensions: Vec<String>,
+    extension_ac: AhoCorasick,
+    exclude_ac: AhoCorasick,
+}
+
+impl Config {
+    fn new(
+        file_flag: bool,
+        dir_flag: bool,
+        hidden_flag: bool,
+        performance_flag: bool,
+        stats_flag: bool,
+        count_flag: bool,
+        depth_flag: u32,
+        pattern: &Vec<&str>,
+        pattern_ac: AhoCorasick,
+        extensions: Vec<&String>,
+        extension_ac: AhoCorasick,
+        exclude_ac: AhoCorasick,
+    ) -> Self {
+        let pattern = pattern[0].to_string();
+        let extensions = extensions.into_iter().map(|e| e.to_string()).collect();
+
+        Self {
+            file_flag,
+            dir_flag,
+            hidden_flag,
+            performance_flag,
+            stats_flag,
+            count_flag,
+            depth_flag,
+            pattern,
+            pattern_ac,
+            extensions,
+            extension_ac,
+            exclude_ac,
+        }
+    }
+}
+
 fn main() {
     // handle Ctrl+C
     ctrlc::set_handler(move || {
@@ -49,7 +99,6 @@ fn main() {
 
     // handle arguments
     let matches = sf().get_matches();
-    // TODO don`t pass the flags around in every function call
     let mut file_flag = matches.get_flag("file");
     let mut dir_flag = matches.get_flag("dir");
     let mut hidden_flag = matches.get_flag("hidden");
@@ -91,7 +140,7 @@ fn main() {
         let pattern = vec![args[0].as_str()];
         // store search pattern in aho-corasick builder
         // handle case-insensitive flag
-        let ac = AhoCorasickBuilder::new()
+        let pattern_ac = AhoCorasickBuilder::new()
             .ascii_case_insensitive(case_insensitive_flag)
             .build(&pattern);
 
@@ -107,6 +156,12 @@ fn main() {
             extensions.append(&mut ext);
         }
 
+        // store extensions in aho-corasick builder
+        // handle case-insensitive flag for exclude patterns
+        let extensions_ac = AhoCorasickBuilder::new()
+            .ascii_case_insensitive(case_insensitive_flag)
+            .build(&extensions);
+
         // get exclude patterns
         let mut exclude_patterns = Vec::new();
         if let Some(mut excl) = matches
@@ -118,17 +173,12 @@ fn main() {
 
         // store exclude patterns in aho-corasick builder
         // handle case-insensitive flag for exclude patterns
-        let ex_ac = AhoCorasickBuilder::new()
+        let exclude_ac = AhoCorasickBuilder::new()
             .ascii_case_insensitive(case_insensitive_flag)
             .build(&exclude_patterns);
 
-        // start search
-        search(
-            &pattern,
-            ac,
-            &path,
-            ex_ac,
-            &extensions,
+        // construct Config
+        let config = Config::new(
             file_flag,
             dir_flag,
             hidden_flag,
@@ -136,7 +186,15 @@ fn main() {
             stats_flag,
             count_flag,
             depth_flag,
+            &pattern,
+            pattern_ac,
+            extensions,
+            extensions_ac,
+            exclude_ac,
         );
+
+        // start search
+        search(&path, &config);
     } else {
         // handle commands
         match matches.subcommand() {
@@ -185,7 +243,7 @@ fn sf() -> Command {
             "- accepts \'.\' as current directory"
         ))
         // TODO update version
-        .version("1.3.2")
+        .version("1.4.0")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -333,42 +391,14 @@ fn sf() -> Command {
         )
 }
 
-fn search(
-    pattern: &Vec<&str>,
-    ac: AhoCorasick,
-    path: &PathBuf,
-    ex_ac: AhoCorasick,
-    extensions: &Vec<&String>,
-    file_flag: bool,
-    dir_flag: bool,
-    hidden_flag: bool,
-    performace_flag: bool,
-    stats_flag: bool,
-    count_flag: bool,
-    depth_flag: u32,
-) {
+fn search(path: &PathBuf, config: &Config) {
     let start = Instant::now();
     let mut entry_count = 0;
     let mut search_hits = 0;
 
     // disable the search indicating spinner and colourful output
-    if performace_flag {
-        forwards_search_and_catch_errors(
-            pattern,
-            ac,
-            path,
-            ex_ac,
-            &extensions,
-            file_flag,
-            dir_flag,
-            hidden_flag,
-            performace_flag,
-            count_flag,
-            depth_flag,
-            &mut search_hits,
-            &mut entry_count,
-            None,
-        );
+    if config.performance_flag {
+        forwards_search_and_catch_errors(path, &config, &mut search_hits, &mut entry_count, None);
     } else {
         // spinner
         let spinner_style = ProgressStyle::with_template("{spinner:.red} {msg}").unwrap();
@@ -378,17 +408,8 @@ fn search(
         pb.set_message(format!("{}", "searching".truecolor(250, 0, 104)));
 
         forwards_search_and_catch_errors(
-            pattern,
-            ac,
             path,
-            ex_ac,
-            &extensions,
-            file_flag,
-            dir_flag,
-            hidden_flag,
-            performace_flag,
-            count_flag,
-            depth_flag,
+            &config,
             &mut search_hits,
             &mut entry_count,
             Some(pb.clone()),
@@ -398,45 +419,21 @@ fn search(
     }
 
     // print output
-    if count_flag && !stats_flag {
+    if config.count_flag && !config.stats_flag {
         println!("{}", search_hits.to_string());
-    } else if stats_flag {
+    } else if config.stats_flag {
         get_search_hits(search_hits, entry_count, start);
     }
 }
 
 fn forwards_search_and_catch_errors(
-    pattern: &Vec<&str>,
-    ac: AhoCorasick,
     path: &PathBuf,
-    ex_ac: AhoCorasick,
-    extensions: &Vec<&String>,
-    file_flag: bool,
-    dir_flag: bool,
-    hidden_flag: bool,
-    performance_flag: bool,
-    count_flag: bool,
-    depth_flag: u32,
+    config: &Config,
     search_hits: &mut u64,
     entry_count: &mut u64,
     pb: Option<ProgressBar>,
 ) {
-    if let Err(err) = forwards_search(
-        pattern,
-        ac,
-        path,
-        ex_ac,
-        &extensions,
-        file_flag,
-        dir_flag,
-        hidden_flag,
-        performance_flag,
-        count_flag,
-        depth_flag,
-        search_hits,
-        entry_count,
-        pb.clone(),
-    ) {
+    if let Err(err) = forwards_search(path, &config, search_hits, entry_count, pb.clone()) {
         match err.kind() {
             io::ErrorKind::NotFound => {
                 warn!("\'{}\' not found: {}", path.display(), err);
@@ -451,7 +448,7 @@ fn forwards_search_and_catch_errors(
             _ => {
                 error!(
                     "Error while scanning entries for {} in \'{}\': {}",
-                    pattern[0].italic(),
+                    config.pattern.italic(),
                     path.display(),
                     err
                 );
@@ -461,17 +458,8 @@ fn forwards_search_and_catch_errors(
 }
 
 fn forwards_search(
-    pattern: &Vec<&str>,
-    ac: AhoCorasick,
     path: &PathBuf,
-    ex_ac: AhoCorasick,
-    extensions: &Vec<&String>,
-    file_flag: bool,
-    dir_flag: bool,
-    hidden_flag: bool,
-    performance_flag: bool,
-    count_flag: bool,
-    depth_flag: u32,
+    config: &Config,
     search_hits: &mut u64,
     entry_count: &mut u64,
     pb: Option<ProgressBar>,
@@ -489,9 +477,9 @@ fn forwards_search(
 
     // filter files
     let valid_entries = WalkDir::new(search_path)
-        .max_depth(depth_flag as usize) // set maximum search depth
+        .max_depth(config.depth_flag as usize) // set maximum search depth
         .into_iter()
-        .filter_entry(|e| file_check(e, hidden_flag, dir_flag)); // handle hidden flag and dir flag
+        .filter_entry(|e| file_check(e, &config)); // handle hidden flag and dir flag
 
     for entry in valid_entries {
         let entry = entry?;
@@ -506,7 +494,7 @@ fn forwards_search(
         // handle file flag
         // must be outside of function file_check()
         // else no file will be searched with WalkDir...filter_entry()
-        if file_flag && !entry.file_type().is_file() {
+        if config.file_flag && !entry.file_type().is_file() {
             continue;
         }
 
@@ -526,7 +514,7 @@ fn forwards_search(
             .to_string();
 
         // handle possible file extensions
-        if !extensions.is_empty() {
+        if !config.extensions.is_empty() {
             if entry.path().is_file() {
                 // get entry extension
                 let mut entry_extension = String::new();
@@ -534,35 +522,15 @@ fn forwards_search(
                     entry_extension.push_str(&extension.to_string_lossy().to_string());
 
                     // check if entry_extension matches any given extensions via extensions flag
-                    if extensions.iter().any(|&it| &entry_extension == it) {
-                        match_pattern_and_print(
-                            name,
-                            parent,
-                            pattern,
-                            &ac,
-                            pb.clone(),
-                            &ex_ac,
-                            search_hits,
-                            performance_flag,
-                            count_flag,
-                        );
+                    if config.extension_ac.is_match(&entry_extension) {
+                        match_pattern_and_print(name, parent, &config, pb.clone(), search_hits);
                     }
                 }
             } else {
                 continue;
             }
         } else {
-            match_pattern_and_print(
-                name,
-                parent,
-                pattern,
-                &ac,
-                pb.clone(),
-                &ex_ac,
-                search_hits,
-                performance_flag,
-                count_flag,
-            );
+            match_pattern_and_print(name, parent, &config, pb.clone(), search_hits);
         }
     }
 
@@ -572,37 +540,27 @@ fn forwards_search(
 fn match_pattern_and_print(
     name: String,
     parent: String,
-    pattern: &Vec<&str>,
-    ac: &AhoCorasick,
+    config: &Config,
     pb: Option<ProgressBar>,
-    ex_ac: &AhoCorasick,
     search_hits: &mut u64,
-    performance_flag: bool,
-    count_flag: bool,
 ) {
     // check for pattern match in filename via aho-corasick algorithm
-    if ac.is_match(&name) && !ex_ac.is_match(&name) {
+    if config.pattern_ac.is_match(&name) && !config.exclude_ac.is_match(&name) {
         *search_hits += 1;
 
-        if !count_flag {
-            print_search_hit(name, parent, pattern, pb.clone(), performance_flag);
+        if !config.count_flag {
+            print_search_hit(name, parent, &config, pb.clone());
         }
     }
 }
 
-fn print_search_hit(
-    name: String,
-    parent: String,
-    pattern: &Vec<&str>,
-    pb: Option<ProgressBar>,
-    performance_flag: bool,
-) {
-    if performance_flag {
+fn print_search_hit(name: String, parent: String, config: &Config, pb: Option<ProgressBar>) {
+    if config.performance_flag {
         println!("{}", format!("{}\\{}", parent, name));
     } else {
         match pb.clone() {
             Some(pb) => {
-                let name_with_hi_pattern = highlight_pattern_in_name(&name, pattern);
+                let name_with_hi_pattern = highlight_pattern_in_name(&name, &config);
                 pb.println(format!(
                     "{}\\{}",
                     parent,
@@ -646,18 +604,18 @@ fn get_search_hits(search_hits: u64, entry_count: u64, start: Instant) {
     );
 }
 
-fn highlight_pattern_in_name(name: &str, pattern: &Vec<&str>) -> String {
+fn highlight_pattern_in_name(name: &str, config: &Config) -> String {
     // find first byte of pattern in filename
-    let pat_in_name = name.find(pattern[0]).unwrap_or_else(|| 9999999999);
+    let pat_in_name = name.find(&config.pattern).unwrap_or_else(|| 9999999999);
 
     if pat_in_name == 9999999999 {
         // if no pattern found return just the filename
         return name.to_string();
     } else {
         let first_from_name = &name[..pat_in_name];
-        let last_from_name = &name[(pat_in_name + pattern[0].len())..];
+        let last_from_name = &name[(pat_in_name + config.pattern.len())..];
         // colourize the pattern in the filename
-        let highlighted_pattern = pattern[0].truecolor(112, 110, 255).to_string();
+        let highlighted_pattern = config.pattern.truecolor(112, 110, 255).to_string();
 
         let mut result = String::from(first_from_name);
         result.push_str(&highlighted_pattern);
@@ -669,12 +627,12 @@ fn highlight_pattern_in_name(name: &str, pattern: &Vec<&str>) -> String {
 
 // check entries if hidden or dir
 // and compare to hidden flag and dir flag
-fn file_check(entry: &DirEntry, hidden_flag: bool, dir_flag: bool) -> bool {
-    if !hidden_flag && is_hidden(&entry.path().to_path_buf()).unwrap_or(false) {
+fn file_check(entry: &DirEntry, config: &Config) -> bool {
+    if !config.hidden_flag && is_hidden(&entry.path().to_path_buf()).unwrap_or(false) {
         return false;
     }
 
-    if dir_flag && !entry.file_type().is_dir() {
+    if config.dir_flag && !entry.file_type().is_dir() {
         return false;
     }
 
