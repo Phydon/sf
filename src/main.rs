@@ -243,7 +243,7 @@ fn sf() -> Command {
             "- accepts \'.\' as current directory"
         ))
         // TODO update version
-        .version("1.4.0")
+        .version("1.4.2")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -519,22 +519,18 @@ fn forwards_search(
 
         // handle possible file extensions
         if !config.extensions.is_empty() {
-            if entry.path().is_file() {
-                // get entry extension
-                let mut entry_extension = String::new();
-                if let Some(extension) = entry.path().extension() {
-                    entry_extension.push_str(&extension.to_string_lossy().to_string());
+            // get entry extension
+            let mut entry_extension = String::new();
+            if let Some(extension) = entry.path().extension() {
+                entry_extension.push_str(&extension.to_string_lossy().to_string());
 
-                    // check if entry_extension matches any given extensions via extensions flag
-                    if config.extension_ac.is_match(&entry_extension) {
-                        match_pattern_and_print(name, parent, &config, pb.clone(), search_hits);
-                    }
-                    // TODO is this really faster than
-                    // if extensions.iter().any(|&it| &entry_extension == it) {...}
-                    // -> with extensions stored in a Vec
+                // check if entry_extension matches any given extensions via extensions flag
+                if config.extension_ac.is_match(&entry_extension) {
+                    match_pattern_and_print(name, parent, &config, pb.clone(), search_hits);
                 }
-            } else {
-                continue;
+                // TODO is this really faster than
+                // if extensions.iter().any(|&it| &entry_extension == it) {...}
+                // -> with extensions stored in a Vec
             }
         } else {
             match_pattern_and_print(name, parent, &config, pb.clone(), search_hits);
