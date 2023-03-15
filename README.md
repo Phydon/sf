@@ -7,11 +7,10 @@ __Simple Find__
 * colourful output and search indicating spinner by default 
   * disable via ```--performance``` flag
 * filter by file, directory and file-extension
-* ignores symlinks
 * exclude patterns from the search 
   * via ```--exclude``` flag
-* include hidden files
-  * via ```--hidden``` flag
+* exclude hidden files
+  * via ```--no-hidden``` flag
 * show number of searched entries, search results and search time
   * via ```--stats``` flag
 * only show number of search results 
@@ -33,9 +32,9 @@ __Simple Find__
 
 ![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_s_done.png)
 
-- search all *rust* files in a specified directory, include hidden files and show stats at the end
+- search all *rust* files in a specified directory, including hidden files and show stats at the end
 
-```sf "" ~\main\Rust\up\ -e rs -sH```
+```sf "" ~\main\Rust\up\ -e rs -s```
 
 ![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_path_ers_sH_done.png)
 
@@ -56,6 +55,8 @@ __Simple Find__
 	
 ## Usage
 
+### Short Usage
+
 ```
 sf [OPTIONS] [PATTERN] [PATH] [COMMAND]
 
@@ -74,13 +75,81 @@ Options:
   -e, --extension <EXTENSIONS>...  Only search in files with the given extensions
   -E, --exclude <PATTERNS>...      Enter patterns to exclude from the search
   -f, --file                       Search only in file names for the pattern
-  -H, --hidden                     Include hidden files and directories in search
+  -H, --no-hidden                  Exclude hidden files and directories from search
   -o, --override                   Override all previously set flags
-  -p, --performance                Disable everything that slows down the search
-  -s, --stats                      Show the number of search results at the end
+  -p, --performance                Disable spinner and don`t colourize the search output
+  -s, --stats                      Show search statistics at the end
   -h, --help                       Print help (see more with '--help')
   -V, --version                    Print version
 ```
+
+### Long Usage
+
+```
+sf [OPTIONS] [PATTERN] [PATH] [COMMAND]
+
+Commands:
+  log, -L, --log
+          Show content of the log file
+  help
+          Print this message or the help of the given subcommand(s)
+
+Arguments:
+  [PATTERN] [PATH]
+          Add a search pattern and a path
+
+Options:
+  -i, --case-insensitive
+          Search case insensitivly
+
+  -c, --count
+          Only print the number of search results
+          Can be combined with the --stats flag to only show stats and no other output
+
+  -D, --depth <NUMBER>
+          Set max search depth
+
+          [default: 250]
+
+  -d, --dir
+          Search only in directory names for the pattern
+
+  -e, --extension <EXTENSIONS>...
+          Only search in files with the given extensions
+          Must be provided after the pattern and the search path
+
+  -E, --exclude <PATTERNS>...
+          Enter patterns to exclude from the search
+          Must be provided after the pattern and the search path
+
+  -f, --file
+          Search only in file names for the pattern
+
+  -H, --no-hidden
+          Exclude hidden files and directories from search
+          If a directory is hidden all its content will be skiped as well
+
+  -o, --override
+          Override all previously set flags
+          This can be used when a custom alias for this command is set together with regularly used flags
+          This flag allows to disable these flags and specify new ones
+
+  -p, --performance
+          Focus on performance
+          Disable search indicating spinner and don`t colourize the search output
+          Only significant in larger searches
+
+  -s, --stats
+          Show search statistics at the end
+          Can be combined with the --count flag to only show stats and no other output
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+```
+
 
 ## Installation
 
@@ -100,7 +169,3 @@ via Cargo or get the ![binary](https://github.com/Phydon/sf/releases)
 sf `"`" . -e rs
 
 ```
-
-## Todo
-
-- speed up
