@@ -24,7 +24,7 @@ __Simple Find__
 
 ## Example
 
-- search for every file and directory that contains the word 'ron', including ![*.ron files](https://github.com/ron-rs/ron)
+- search for every file and directory that contains the word 'ron', excluding hidden files but including ![*.ron files](https://github.com/ron-rs/ron)
 
 ```sf ron . -s```
 
@@ -32,25 +32,27 @@ __Simple Find__
 
 ![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_ron_current_s_done.png)
 
-- search all *rust* files in a specified directory, including hidden files and show stats at the end
+- search all *python* files in a specified directory but only show stats at the end
 
-```sf "" ~\main\Rust\up\ -e rs -s```
+```sf "" ~\main\ -e py -sc```
 
-![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_path_ers_sH_done.png)
+![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf___path_e_py_sc.png)
 
-- search only files containing the word *test*, exclude results containing the words *json* or *py* or *bin*
+- search only files containing the word *helix*, exclude results containing the words *test* or *json* or *bin*
 
-```sf test ~\main\Rust\sf -fs -E json py bin```
+```sf helix . -fs -E test json bin```
 
-![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_test_path_fs_Ejsonpybin_done.png)
+![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_helix_current_fs_E_test_json_bin.png)
+
+- count all entries in the current directory and disable the search indicating spinner 
+
+```sf "" . -cp```
+
+![screenshot](https://github.com/Phydon/sf/blob/master/assets/sf_current_count_all.png)
 
 - you can use ```sf``` to list all files and sub-directories recursively via ```""``` as an empty search pattern 
 
 ```sf "" .```
-
-- count all entries in the current directory and disable the search indicating spinner
-
-```sf "" . -cp```
 
 	
 ## Usage

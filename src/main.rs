@@ -68,9 +68,10 @@ fn main() {
     // handle Ctrl+C
     ctrlc::set_handler(move || {
         println!(
-            "{} {} {}",
+            "{} {} {} {}",
+            "Received Ctrl-C!".bold().red(),
             "🤬",
-            "Received Ctrl-C! => Exit program!".bold().yellow(),
+            "Exit program!".bold().red(),
             "☠",
         );
         process::exit(0)
@@ -479,7 +480,7 @@ fn forwards_search(
         .max_depth(config.depth_flag as usize) // set maximum search depth
         .into_iter()
         // TODO bottleneck if it has to filter out hidden files
-        .filter_entry(|e| file_check(e, &config)); // handle hidden flag and dir flag
+        .filter_entry(|e| file_check(e, &config)); // handle hidden flag
 
     for entry in valid_entries {
         let entry = entry?;
