@@ -7,7 +7,8 @@ use log::{error, warn};
 use walkdir::{DirEntry, WalkDir};
 
 use std::{
-    env, fs, io,
+    env, fs,
+    io::{self, Write},
     os::windows::prelude::MetadataExt,
     path::{Path, PathBuf},
     process,
@@ -65,6 +66,10 @@ impl Config {
 }
 
 fn main() {
+    // TODO with or without lock()??
+    let stdout = io::stdout().lock();
+    let mut handle = io::BufWriter::new(stdout);
+
     // handle Ctrl+C
     ctrlc::set_handler(move || {
         println!(
@@ -195,7 +200,12 @@ fn main() {
         );
 
         // start search
-        search(&path, &config);
+        search(&mut handle, &path, &config);
+
+        // flush bufwriter
+        handle
+            .flush()
+            .unwrap_or_else(|err| error!("Error flushing writer: {err}"));
     } else {
         // handle commands
         match matches.subcommand() {
@@ -244,7 +254,7 @@ fn sf() -> Command {
             "Note: every set filter slows down the search".truecolor(250, 0, 104)
         ))
         // TODO update version
-        .version("1.4.3")
+        .version("1.5.0")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -391,14 +401,21 @@ fn sf() -> Command {
         )
 }
 
-fn search(path: &PathBuf, config: &Config) {
+fn search<W: Write>(handle: &mut W, path: &PathBuf, config: &Config) {
     let start = Instant::now();
     let mut entry_count = 0;
     let mut search_hits = 0;
 
     // disable the search indicating spinner and colourful output
     if config.performance_flag {
-        forwards_search_and_catch_errors(path, &config, &mut search_hits, &mut entry_count, None);
+        forwards_search_and_catch_errors(
+            handle,
+            path,
+            &config,
+            &mut search_hits,
+            &mut entry_count,
+            None,
+        );
     } else {
         // spinner
         let spinner_style = ProgressStyle::with_template("{spinner:.red} {msg}").unwrap();
@@ -408,6 +425,7 @@ fn search(path: &PathBuf, config: &Config) {
         pb.set_message(format!("{}", "searching".truecolor(250, 0, 104)));
 
         forwards_search_and_catch_errors(
+            handle,
             path,
             &config,
             &mut search_hits,
@@ -420,20 +438,23 @@ fn search(path: &PathBuf, config: &Config) {
 
     // print output
     if config.count_flag && !config.stats_flag {
-        println!("{}", search_hits.to_string());
+        writeln!(handle, "{}", search_hits.to_string()).unwrap_or_else(|err| {
+            error!("Error writing to stdout: {err}");
+        });
     } else if config.stats_flag {
         get_search_hits(search_hits, entry_count, start);
     }
 }
 
-fn forwards_search_and_catch_errors(
+fn forwards_search_and_catch_errors<W: Write>(
+    handle: &mut W,
     path: &PathBuf,
     config: &Config,
     search_hits: &mut u64,
     entry_count: &mut u64,
     pb: Option<ProgressBar>,
 ) {
-    if let Err(err) = forwards_search(path, &config, search_hits, entry_count, pb.clone()) {
+    if let Err(err) = forwards_search(handle, path, &config, search_hits, entry_count, pb.clone()) {
         match err.kind() {
             io::ErrorKind::NotFound => {
                 warn!("\'{}\' not found: {}", path.display(), err);
@@ -457,7 +478,8 @@ fn forwards_search_and_catch_errors(
     };
 }
 
-fn forwards_search(
+fn forwards_search<W: Write>(
+    handle: &mut W,
     path: &PathBuf,
     config: &Config,
     search_hits: &mut u64,
@@ -523,21 +545,22 @@ fn forwards_search(
 
                 // check if entry_extension matches any given extensions via extensions flag
                 if config.extension_ac.is_match(&entry_extension) {
-                    match_pattern_and_print(name, parent, &config, pb.clone(), search_hits);
+                    match_pattern_and_print(handle, name, parent, &config, pb.clone(), search_hits);
                 }
                 // TODO is this really faster than
                 // if extensions.iter().any(|&it| &entry_extension == it) {...}
                 // -> with extensions stored in a Vec
             }
         } else {
-            match_pattern_and_print(name, parent, &config, pb.clone(), search_hits);
+            match_pattern_and_print(handle, name, parent, &config, pb.clone(), search_hits);
         }
     }
 
     Ok(())
 }
 
-fn match_pattern_and_print(
+fn match_pattern_and_print<W: Write>(
+    handle: &mut W,
     name: String,
     parent: String,
     config: &Config,
@@ -549,14 +572,22 @@ fn match_pattern_and_print(
         *search_hits += 1;
 
         if !config.count_flag {
-            print_search_hit(name, parent, &config, pb.clone());
+            print_search_hit(handle, name, parent, &config, pb.clone());
         }
     }
 }
 
-fn print_search_hit(name: String, parent: String, config: &Config, pb: Option<ProgressBar>) {
+fn print_search_hit<W: Write>(
+    handle: &mut W,
+    name: String,
+    parent: String,
+    config: &Config,
+    pb: Option<ProgressBar>,
+) {
     if config.performance_flag {
-        println!("{}", format!("{}\\{}", parent, name));
+        writeln!(handle, "{}", format!("{}\\{}", parent, name)).unwrap_or_else(|err| {
+            error!("Error writing to stdout: {err}");
+        });
     } else {
         match pb.clone() {
             Some(pb) => {
