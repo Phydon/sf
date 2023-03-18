@@ -202,7 +202,7 @@ fn main() {
         // start search
         search(&mut handle, &path, &config);
 
-        // flush bufwriter
+        // empty bufwriter
         handle
             .flush()
             .unwrap_or_else(|err| error!("Error flushing writer: {err}"));
@@ -254,7 +254,7 @@ fn sf() -> Command {
             "Note: every set filter slows down the search".truecolor(250, 0, 104)
         ))
         // TODO update version
-        .version("1.5.0")
+        .version("1.5.1")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -372,12 +372,12 @@ fn sf() -> Command {
             Arg::new("performance")
                 .short('p')
                 .long("performance")
-                .help("Disable spinner and don`t colourize the search output")
+                .help("Disable spinner, don`t colourize the search output and speed up the output printing")
                 .long_help(format!(
                     "{}\n{}\n{}",
                     "Focus on performance",
                     "Disable search indicating spinner and don`t colourize the search output",
-                    "Only significant in larger searches"
+                    "Write the output via BufWriter",
                 ))
                 .action(ArgAction::SetTrue),
         )
