@@ -438,9 +438,7 @@ fn search<W: Write>(handle: &mut W, path: &PathBuf, config: &Config) {
 
     // print output
     if config.count_flag && !config.stats_flag {
-        writeln!(handle, "{}", search_hits.to_string()).unwrap_or_else(|err| {
-            error!("Error writing to stdout: {err}");
-        });
+        println!("{}", search_hits.to_string());
     } else if config.stats_flag {
         get_search_hits(search_hits, entry_count, start);
     }
