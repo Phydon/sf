@@ -66,7 +66,7 @@ impl Config {
 }
 
 fn main() {
-    // TODO with or without lock()??
+    // don`t lock stdout, otherwise unable to handle ctrl-c
     let stdout = io::stdout();
     let mut handle = io::BufWriter::new(stdout);
 
