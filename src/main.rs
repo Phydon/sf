@@ -67,7 +67,7 @@ impl Config {
 
 fn main() {
     // TODO with or without lock()??
-    let stdout = io::stdout().lock();
+    let stdout = io::stdout();
     let mut handle = io::BufWriter::new(stdout);
 
     // handle Ctrl+C
@@ -570,33 +570,23 @@ fn match_pattern_and_print<W: Write>(
         *search_hits += 1;
 
         if !config.count_flag {
-            print_search_hit(handle, name, parent, &config, pb.clone());
-        }
-    }
-}
-
-fn print_search_hit<W: Write>(
-    handle: &mut W,
-    name: String,
-    parent: String,
-    config: &Config,
-    pb: Option<ProgressBar>,
-) {
-    if config.performance_flag {
-        writeln!(handle, "{}", format!("{}\\{}", parent, name)).unwrap_or_else(|err| {
-            error!("Error writing to stdout: {err}");
-        });
-    } else {
-        match pb.clone() {
-            Some(pb) => {
-                let name_with_hi_pattern = highlight_pattern_in_name(&name, &config);
-                pb.println(format!(
-                    "{}\\{}",
-                    parent,
-                    name_with_hi_pattern.truecolor(59, 179, 140)
-                ))
+            if config.performance_flag {
+                writeln!(handle, "{}", format!("{}\\{}", parent, name)).unwrap_or_else(|err| {
+                    error!("Error writing to stdout: {err}");
+                });
+            } else {
+                match pb.clone() {
+                    Some(pb) => {
+                        let name_with_hi_pattern = highlight_pattern_in_name(&name, &config);
+                        pb.println(format!(
+                            "{}\\{}",
+                            parent,
+                            name_with_hi_pattern.truecolor(59, 179, 140)
+                        ))
+                    }
+                    None => {}
+                }
             }
-            None => {}
         }
     }
 }
