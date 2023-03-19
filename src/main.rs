@@ -26,7 +26,6 @@ struct Config {
     pattern: String,
     pattern_ac: AhoCorasick,
     extensions: Vec<String>,
-    extension_ac: AhoCorasick,
     exclude_ac: AhoCorasick,
 }
 
@@ -42,7 +41,6 @@ impl Config {
         pattern: &Vec<&str>,
         pattern_ac: AhoCorasick,
         extensions: Vec<&String>,
-        extension_ac: AhoCorasick,
         exclude_ac: AhoCorasick,
     ) -> Self {
         let pattern = pattern[0].to_string();
@@ -59,7 +57,6 @@ impl Config {
             pattern,
             pattern_ac,
             extensions,
-            extension_ac,
             exclude_ac,
         }
     }
@@ -162,12 +159,6 @@ fn main() {
             extensions.append(&mut ext);
         }
 
-        // store extensions in aho-corasick builder
-        // handle case-insensitive flag for extensions
-        let extensions_ac = AhoCorasickBuilder::new()
-            .ascii_case_insensitive(case_insensitive_flag)
-            .build(&extensions);
-
         // get exclude patterns
         let mut exclude_patterns = Vec::new();
         if let Some(mut excl) = matches
@@ -195,7 +186,6 @@ fn main() {
             &pattern,
             pattern_ac,
             extensions,
-            extensions_ac,
             exclude_ac,
         );
 
@@ -254,7 +244,7 @@ fn sf() -> Command {
             "Note: every set filter slows down the search".truecolor(250, 0, 104)
         ))
         // TODO update version
-        .version("1.5.1")
+        .version("1.6.0")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -542,12 +532,9 @@ fn forwards_search<W: Write>(
                 entry_extension.push_str(&extension.to_string_lossy().to_string());
 
                 // check if entry_extension matches any given extensions via extensions flag
-                if config.extension_ac.is_match(&entry_extension) {
+                if config.extensions.iter().any(|it| &entry_extension == it) {
                     match_pattern_and_print(handle, name, parent, &config, pb.clone(), search_hits);
                 }
-                // TODO is this really faster than
-                // if extensions.iter().any(|&it| &entry_extension == it) {...}
-                // -> with extensions stored in a Vec
             }
         } else {
             match_pattern_and_print(handle, name, parent, &config, pb.clone(), search_hits);
