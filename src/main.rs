@@ -15,6 +15,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+const BUFFER_CAPACITY: usize = 64 * (1 << 10); // 64 KB
+
 struct Config {
     file_flag: bool,
     dir_flag: bool,
@@ -64,8 +66,7 @@ impl Config {
 
 fn main() {
     // don`t lock stdout, otherwise unable to handle ctrl-c
-    let stdout = io::stdout();
-    let mut handle = io::BufWriter::new(stdout);
+    let mut handle = io::BufWriter::with_capacity(BUFFER_CAPACITY, io::stdout());
 
     // handle Ctrl+C
     ctrlc::set_handler(move || {
@@ -244,7 +245,7 @@ fn sf() -> Command {
             "Note: every set filter slows down the search".truecolor(250, 0, 104)
         ))
         // TODO update version
-        .version("1.6.0")
+        .version("1.6.1")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -531,7 +532,7 @@ fn forwards_search<W: Write>(
             if let Some(extension) = entry.path().extension() {
                 entry_extension.push_str(&extension.to_string_lossy().to_string());
 
-                // check if entry_extension matches any given extensions via extensions flag
+                // check if entry_extension matches any given extension via extensions flag
                 if config.extensions.iter().any(|it| &entry_extension == it) {
                     match_pattern_and_print(handle, name, parent, &config, pb.clone(), search_hits);
                 }
