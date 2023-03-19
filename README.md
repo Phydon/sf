@@ -79,7 +79,7 @@ Options:
   -f, --file                       Search only in file names for the pattern
   -H, --no-hidden                  Exclude hidden files and directories from search
   -o, --override                   Override all previously set flags
-  -p, --performance                Disable spinner and don`t colourize the search output
+  -p, --performance                Disable spinner, don`t colourize the search output and speed up the output printing
   -s, --stats                      Show search statistics at the end
   -h, --help                       Print help (see more with '--help')
   -V, --version                    Print version
@@ -139,7 +139,7 @@ Options:
   -p, --performance
           Focus on performance
           Disable search indicating spinner and don`t colourize the search output
-          Only significant in larger searches
+          Write the output via BufWriter
 
   -s, --stats
           Show search statistics at the end
@@ -149,8 +149,7 @@ Options:
           Print help (see a summary with '-h')
 
   -V, --version
-          Print version
-```
+          Print version```
 
 
 ## Installation
