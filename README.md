@@ -149,7 +149,8 @@ Options:
           Print help (see a summary with '-h')
 
   -V, --version
-          Print version```
+          Print version
+```
 
 
 ## Installation
