@@ -23,6 +23,7 @@ struct Config {
     no_hidden_flag: bool,
     performance_flag: bool,
     stats_flag: bool,
+    stats_long_flag: bool,
     count_flag: bool,
     depth_flag: u32,
     pattern: String,
@@ -39,6 +40,7 @@ impl Config {
         no_hidden_flag: bool,
         performance_flag: bool,
         stats_flag: bool,
+        stats_long_flag: bool,
         count_flag: bool,
         depth_flag: u32,
         pattern: &Vec<&str>,
@@ -56,6 +58,7 @@ impl Config {
             no_hidden_flag,
             performance_flag,
             stats_flag,
+            stats_long_flag,
             count_flag,
             depth_flag,
             pattern,
@@ -111,6 +114,7 @@ fn main() {
     let mut no_hidden_flag = matches.get_flag("no-hidden");
     let mut performance_flag = matches.get_flag("performance");
     let mut stats_flag = matches.get_flag("stats");
+    let mut stats_long_flag = matches.get_flag("stats-long");
     let mut count_flag = matches.get_flag("count");
     let mut case_insensitive_flag = matches.get_flag("case-insensitive");
     let mut show_errors_flag = matches.get_flag("show-errors");
@@ -135,6 +139,7 @@ fn main() {
         no_hidden_flag = false;
         performance_flag = false;
         stats_flag = false;
+        stats_long_flag = false;
         count_flag = false;
         depth_flag = 250;
         case_insensitive_flag = false;
@@ -187,6 +192,7 @@ fn main() {
             no_hidden_flag,
             performance_flag,
             stats_flag,
+            stats_long_flag,
             count_flag,
             depth_flag,
             &pattern,
@@ -362,7 +368,7 @@ fn sf() -> Command {
                     "This flag allows to disable these flags and specify new ones"
                 ))
                 // TODO if new args -> add here to this list to override if needed
-                .overrides_with_all(["stats", "file", "dir", "extension", "exclude", "no-hidden", "performance", "count", "show-errors"])
+                .overrides_with_all(["stats", "stats-long", "file", "dir", "extension", "exclude", "no-hidden", "performance", "count", "show-errors"])
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -378,7 +384,7 @@ fn sf() -> Command {
                     "Cannot be set together with the --stats flag",
                 ))
                 .action(ArgAction::SetTrue)
-                .conflicts_with("stats"),
+                .conflicts_with_all(["stats", "stats-long"]),
         )
         .arg(
             Arg::new("show-errors")
@@ -391,17 +397,28 @@ fn sf() -> Command {
                     "Cannot be set together with the --stats flag",
                 ))
                 .action(ArgAction::SetTrue)
-                .conflicts_with("stats"),
+                .conflicts_with_all(["stats", "stats-long"]),
         )
         .arg(
             Arg::new("stats")
                 .short('s')
                 .long("stats")
+                .help("Show short search statistics at the end")
+                .long_help(format!(
+                    "{}\n{}",
+                    "Show short search statistics at the end",
+                    "Cannot be set together with the --performance flag  and the --show-errors flag",
+                ))
+                .conflicts_with("stats-long")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("stats-long")
+                .long("stats-long")
                 .help("Show search statistics at the end")
                 .long_help(format!(
-                    "{}\n{}\n{}",
+                    "{}\n{}",
                     "Show search statistics at the end",
-                    "Can be combined with the --count flag to only show stats and no other output",
                     "Cannot be set together with the --performance flag  and the --show-errors flag",
                 ))
                 .action(ArgAction::SetTrue),
@@ -454,10 +471,12 @@ fn search<W: Write>(handle: &mut W, path: &PathBuf, config: &Config) {
     }
 
     // print output >> stats or count
-    if config.count_flag && !config.stats_flag {
+    if config.count_flag && !config.stats_flag || config.count_flag && !config.stats_long_flag {
         println!("{}", search_hits.to_string());
     } else if config.stats_flag {
-        get_search_hits(search_hits, entry_count, error_count, start);
+        get_search_hits_short(search_hits, entry_count, error_count, start);
+    } else if config.stats_long_flag {
+        get_search_hits_long(search_hits, entry_count, error_count, start);
     }
 }
 
@@ -608,7 +627,19 @@ fn match_pattern_and_print<W: Write>(
     }
 }
 
-fn get_search_hits(search_hits: u64, entry_count: u64, error_count: u64, start: Instant) {
+fn get_search_hits_short(search_hits: u64, entry_count: u64, error_count: u64, start: Instant) {
+    println!(
+        "\n[{}   {} {} {}]",
+        HumanDuration(start.elapsed())
+            .to_string()
+            .truecolor(112, 110, 255),
+        entry_count.to_string().dimmed(),
+        error_count.to_string().truecolor(250, 0, 104),
+        search_hits.to_string().truecolor(59, 179, 140).bold(),
+    );
+}
+
+fn get_search_hits_long(search_hits: u64, entry_count: u64, error_count: u64, start: Instant) {
     println!(
         "\n{} {}",
         entry_count.to_string().dimmed(),
