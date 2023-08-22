@@ -257,7 +257,7 @@ fn sf() -> Command {
             "Note: every set filter slows down the search".truecolor(250, 0, 104)
         ))
         // TODO update version
-        .version("1.8.0")
+        .version("1.8.1")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -279,11 +279,6 @@ fn sf() -> Command {
                 .short('c')
                 .long("count")
                 .help("Only print the number of search results")
-                .long_help(format!(
-                    "{}\n{}",
-                    "Only print the number of search results",
-                    "Can be combined with the --stats flag to only show stats and no other output",
-                ))
                 .action(ArgAction::SetTrue)
         )
         .arg(
@@ -291,10 +286,6 @@ fn sf() -> Command {
                 .short('D')
                 .long("depth")
                 .help("Set max search depth")
-                .long_help(format!(
-                    "{}",
-                    "Set max search depth",
-                ))
                 .default_value("250")
                 .action(ArgAction::Set)
                 .num_args(1)
@@ -352,7 +343,7 @@ fn sf() -> Command {
                 .long_help(format!(
                     "{}\n{}",
                     "Exclude hidden files and directories from search",
-                    "If a directory is hidden all its content will be skiped as well",
+                    "If a directory is hidden, all its content will be skiped as well",
                 ))
                 .action(ArgAction::SetTrue),
         )
@@ -391,13 +382,11 @@ fn sf() -> Command {
                 .long("show-errors")
                 .help("Show possible filesystem errors")
                 .long_help(format!(
-                    "{}\n{}\n{}",
+                    "{}\n{}",
                     "Show possible filesystem errors",
                     "For example for situations such as insufficient permissions",
-                    "Cannot be set together with the --stats flag",
                 ))
                 .action(ArgAction::SetTrue)
-                .conflicts_with_all(["stats", "stats-long"]),
         )
         .arg(
             Arg::new("stats")
@@ -407,7 +396,7 @@ fn sf() -> Command {
                 .long_help(format!(
                     "{}\n{}",
                     "Show short search statistics at the end",
-                    "Cannot be set together with the --performance flag  and the --show-errors flag",
+                    "Cannot be set together with the --performance flag",
                 ))
                 .conflicts_with("stats-long")
                 .action(ArgAction::SetTrue),
@@ -419,7 +408,7 @@ fn sf() -> Command {
                 .long_help(format!(
                     "{}\n{}",
                     "Show search statistics at the end",
-                    "Cannot be set together with the --performance flag  and the --show-errors flag",
+                    "Cannot be set together with the --performance flag",
                 ))
                 .action(ArgAction::SetTrue),
         )
@@ -569,21 +558,46 @@ fn forwards_search<W: Write>(
                 if config.show_errors_flag {
                     let path = err.path().unwrap_or(Path::new("")).display();
                     if let Some(inner) = err.io_error() {
-                        match inner.kind() {
-                            io::ErrorKind::InvalidData => {
-                                warn!("Entry \'{}\' contains invalid data: {}", path, inner)
-                            }
-                            io::ErrorKind::NotFound => {
-                                warn!("Entry \'{}\' not found: {}", path, inner);
-                            }
-                            io::ErrorKind::PermissionDenied => {
-                                warn!("Missing permission to read entry \'{}\': {}", path, inner)
-                            }
-                            _ => {
-                                error!(
-                                    "Failed to access entry: \'{}\'\nUnexpected error occurred: {}",
-                                    path, inner
-                                )
+                        if let Some(progbar) = pb.clone() {
+                            progbar.suspend(|| {
+                                match inner.kind() {
+                                    io::ErrorKind::InvalidData => {
+                                        warn!("Entry \'{}\' contains invalid data: {}", path, inner)
+                                    }
+                                    io::ErrorKind::NotFound => {
+                                        warn!("Entry \'{}\' not found: {}", path, inner);
+                                    }
+                                    io::ErrorKind::PermissionDenied => {
+                                        warn!("Missing permission to read entry \'{}\': {}", path, inner)
+                                    }
+                                    _ => {
+                                        error!(
+                                            "Failed to access entry: \'{}\'\nUnexpected error occurred: {}",
+                                            path, inner
+                                        )
+                                    }
+                                }
+                            });
+                        } else {
+                            match inner.kind() {
+                                io::ErrorKind::InvalidData => {
+                                    warn!("Entry \'{}\' contains invalid data: {}", path, inner)
+                                }
+                                io::ErrorKind::NotFound => {
+                                    warn!("Entry \'{}\' not found: {}", path, inner);
+                                }
+                                io::ErrorKind::PermissionDenied => {
+                                    warn!(
+                                        "Missing permission to read entry \'{}\': {}",
+                                        path, inner
+                                    )
+                                }
+                                _ => {
+                                    error!(
+                                        "Failed to access entry: \'{}\'\nUnexpected error occurred: {}",
+                                        path, inner
+                                    )
+                                }
                             }
                         }
                     }
