@@ -257,7 +257,7 @@ fn sf() -> Command {
             "Note: every set filter slows down the search".truecolor(250, 0, 104)
         ))
         // TODO update version
-        .version("1.8.1")
+        .version("1.8.2")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -279,6 +279,10 @@ fn sf() -> Command {
                 .short('c')
                 .long("count")
                 .help("Only print the number of search results")
+                .long_help(format!("{}\n{}", 
+                    "Only print the number of search results",
+                    "Can be combined with the --stats flag to only show stats",
+                ))
                 .action(ArgAction::SetTrue)
         )
         .arg(
@@ -394,8 +398,9 @@ fn sf() -> Command {
                 .long("stats")
                 .help("Show short search statistics at the end")
                 .long_help(format!(
-                    "{}\n{}",
+                    "{}\n{}\n{}",
                     "Show short search statistics at the end",
+                    "Can be combined with the --count flag to only show stats",
                     "Cannot be set together with the --performance flag",
                 ))
                 .conflicts_with("stats-long")
@@ -406,8 +411,9 @@ fn sf() -> Command {
                 .long("stats-long")
                 .help("Show search statistics at the end")
                 .long_help(format!(
-                    "{}\n{}",
+                    "{}\n{}\n{}",
                     "Show search statistics at the end",
+                    "Can be combined with the --count flag to only show stats",
                     "Cannot be set together with the --performance flag",
                 ))
                 .action(ArgAction::SetTrue),
@@ -460,12 +466,16 @@ fn search<W: Write>(handle: &mut W, path: &PathBuf, config: &Config) {
     }
 
     // print output >> stats or count
-    if config.count_flag && !config.stats_flag || config.count_flag && !config.stats_long_flag {
-        println!("{}", search_hits.to_string());
-    } else if config.stats_flag {
+    if config.count_flag && config.stats_flag || config.stats_flag && !config.count_flag {
         get_search_hits_short(search_hits, entry_count, error_count, start);
-    } else if config.stats_long_flag {
+    } else if config.count_flag && config.stats_long_flag
+        || config.stats_long_flag && !config.count_flag
+    {
         get_search_hits_long(search_hits, entry_count, error_count, start);
+    } else if config.count_flag && !config.stats_flag
+        || config.count_flag && !config.stats_long_flag
+    {
+        println!("{}", search_hits.to_string());
     }
 }
 
