@@ -257,7 +257,7 @@ fn sf() -> Command {
             "Note: every set filter slows down the search".truecolor(250, 0, 104)
         ))
         // TODO update version
-        .version("1.8.2")
+        .version("1.8.3")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -653,7 +653,7 @@ fn match_pattern_and_print<W: Write>(
 
 fn get_search_hits_short(search_hits: u64, entry_count: u64, error_count: u64, start: Instant) {
     println!(
-        "\n[{}   {} {} {}]",
+        "[{}   {} {} {}]",
         HumanDuration(start.elapsed())
             .to_string()
             .truecolor(112, 110, 255),
