@@ -4,7 +4,7 @@ __Simple Find__
 
 *simple file search*
 
-* colourful output and search indicating spinner by default 
+* colourful output, clickable filepaths and search indicating spinner by default 
   * disable via ```--performance``` flag
 * filter by file, directory and file-extension
 * exclude patterns from the search 
