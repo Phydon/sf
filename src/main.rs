@@ -251,7 +251,7 @@ fn sf() -> Command {
             "Note: every set filter slows down the search".truecolor(250, 0, 104)
         ))
         // TODO update version
-        .version("1.8.4")
+        .version("1.8.5")
         .author("Leann Phydon <leann.phydon@gmail.com>")
         .arg_required_else_help(true)
         .arg(
@@ -530,7 +530,8 @@ fn forwards_search<W: Write>(
                     .parent()
                     .unwrap_or_else(|| Path::new(""))
                     .to_string_lossy()
-                    .to_string();
+                    .to_string()
+                    .replace("\\", "/");
 
                 // handle possible file extensions
                 if !config.extensions.is_empty() {
@@ -625,15 +626,19 @@ fn match_pattern_and_print<W: Write>(
 
         if !config.count_flag {
             if config.performance_flag {
-                writeln!(handle, "{}", format!("{}\\{}", parent, name)).unwrap_or_else(|err| {
-                    error!("Error writing to stdout: {err}");
-                });
+                // use "file://" to make the path clickable in Windows Terminal"
+                writeln!(handle, "{}", format!("file://{}/{}", parent, name)).unwrap_or_else(
+                    |err| {
+                        error!("Error writing to stdout: {err}");
+                    },
+                );
             } else {
                 match pb.clone() {
                     Some(pb) => {
                         let name_with_hi_pattern = highlight_pattern_in_name(&name, &config);
+                        // use "file://" to make the path clickable in Windows Terminal"
                         pb.println(format!(
-                            "{}\\{}",
+                            "file://{}/{}",
                             parent,
                             name_with_hi_pattern.truecolor(59, 179, 140)
                         ))
