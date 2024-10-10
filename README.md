@@ -181,7 +181,7 @@ via Cargo or get the ![binary](https://github.com/Phydon/sf/releases)
 ### PowerShell
 
 - ```sf "" . -e rs``` to find all Rust files in the current directory doesn`t work in PowerShell
-  solution => you have to escape the quotes: 
+  * solution => you have to escape the quotes: 
 
 ```
 
