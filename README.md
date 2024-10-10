@@ -7,6 +7,10 @@ __Simple Find__
 * colourful output, clickable filepaths and search indicating spinner by default 
   * disable via ```--performance``` flag
 * filter by file, directory and file-extension
+  * via: 
+    * ```--file``` flag
+    * ```--dir``` flag
+    * ```--extension``` flag
 * exclude patterns from the search 
   * via ```--exclude``` flag
 * exclude hidden files
@@ -20,6 +24,8 @@ __Simple Find__
 * set maximum search depth
   * via ```--depth``` flag
 * accepts ```.``` as current directory
+* ignores filesystem errors (e.g. no permission to access file) by default
+  * show errors via ```--show-errors``` flag
 * no regex search (for now)
 
 ## Example
@@ -80,7 +86,9 @@ Options:
   -H, --no-hidden                  Exclude hidden files and directories from search
   -o, --override                   Override all previously set flags
   -p, --performance                Disable spinner, don`t colourize the search output and speed up the output printing
-  -s, --stats                      Show search statistics at the end
+      --show-errors                Show possible filesystem errors
+  -s, --stats                      Show short search statistics at the end
+      --stats-long                 Show search statistics at the end
   -h, --help                       Print help (see more with '--help')
   -V, --version                    Print version
 ```
@@ -91,10 +99,8 @@ Options:
 sf [OPTIONS] [PATTERN] [PATH] [COMMAND]
 
 Commands:
-  log, -L, --log
-          Show content of the log file
-  help
-          Print this message or the help of the given subcommand(s)
+  log, -L, --log  Show content of the log file
+  help            Print this message or the help of the given subcommand(s)
 
 Arguments:
   [PATTERN] [PATH]
@@ -106,7 +112,7 @@ Options:
 
   -c, --count
           Only print the number of search results
-          Can be combined with the --stats flag to only show stats and no other output
+          Can be combined with the --stats flag to only show stats
 
   -D, --depth <NUMBER>
           Set max search depth
@@ -129,7 +135,7 @@ Options:
 
   -H, --no-hidden
           Exclude hidden files and directories from search
-          If a directory is hidden all its content will be skiped as well
+          If a directory is hidden, all its content will be skiped as well
 
   -o, --override
           Override all previously set flags
@@ -140,10 +146,21 @@ Options:
           Focus on performance
           Disable search indicating spinner and don`t colourize the search output
           Write the output via BufWriter
+          Cannot be set together with the --stats flag
+
+      --show-errors
+          Show possible filesystem errors
+          For example for situations such as insufficient permissions
 
   -s, --stats
+          Show short search statistics at the end
+          Can be combined with the --count flag to only show stats
+          Cannot be set together with the --performance flag
+
+      --stats-long
           Show search statistics at the end
-          Can be combined with the --count flag to only show stats and no other output
+          Can be combined with the --count flag to only show stats
+          Cannot be set together with the --performance flag
 
   -h, --help
           Print help (see a summary with '-h')
